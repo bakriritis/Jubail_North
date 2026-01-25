@@ -1,0 +1,13 @@
+{
+  "files": {
+    "main.css": "/Jubail_North/static/css/main.cf890fdb.css",
+    "main.js": "/Jubail_North/static/js/main.b747782d.js",
+    "index.html": "/Jubail_North/index.html",
+    "main.cf890fdb.css.map": "/Jubail_North/static/css/main.cf890fdb.css.map",
+    "main.b747782d.js.map": "/Jubail_North/static/js/main.b747782d.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.cf890fdb.css",
+    "static/js/main.b747782d.js"
+  ]
+}
