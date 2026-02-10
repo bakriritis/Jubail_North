@@ -1,13 +1,13 @@
 {
   "files": {
     "main.css": "/Jubail_North/static/css/main.cf890fdb.css",
-    "main.js": "/Jubail_North/static/js/main.e1669f2b.js",
+    "main.js": "/Jubail_North/static/js/main.9b9bc6b0.js",
     "index.html": "/Jubail_North/index.html",
     "main.cf890fdb.css.map": "/Jubail_North/static/css/main.cf890fdb.css.map",
-    "main.e1669f2b.js.map": "/Jubail_North/static/js/main.e1669f2b.js.map"
+    "main.9b9bc6b0.js.map": "/Jubail_North/static/js/main.9b9bc6b0.js.map"
   },
   "entrypoints": [
     "static/css/main.cf890fdb.css",
-    "static/js/main.e1669f2b.js"
+    "static/js/main.9b9bc6b0.js"
   ]
 }
