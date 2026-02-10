@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import emailjs from '@emailjs/browser';
 import {
     BarChart, Bar, PieChart, Pie, Cell, AreaChart, Area, LineChart, Line,
     XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid,
@@ -34,9 +35,9 @@ const GOOGLE_SHEETS = {
 };
 
 const PROJECT = {
-    name: "Kingdom Gate Tower - Low Current Systems",
-    client: "Al Fahd Investment - STS",
-    contract: "SO-23_0941_001_R_08",
+    name: "SEC-EOA Ph#3 Project- Jubail North & Jubail Residential Substations",
+    client: "Saudi Business Machines ",
+    contract: "Ritis 01 24 0953 001 R 05",
     // start: new Date(2025, 2, 1),
     end: new Date(2026, 2, 15),
     totalValue: 1645659
@@ -49,9 +50,9 @@ const USERS = {
         position: "Operations Manager",
         department: "Operations",
         role: "ADMIN",
-        email: "khalid@project.com",
+        email: "y.khan@alrammah.com.sa",
         phone: "+966541546402",
-        avatar: "https://ui-avatars.com/api/?name=Khalid+Jehangir&background=3b82f6&color=fff&size=200"
+        avatar: process.env.REACT_APP_KHALID_PHOTO,
     },
     "bakri": {
         token: process.env.REACT_APP_PM_TOKEN,  // ← من .env
@@ -59,9 +60,10 @@ const USERS = {
         position: "Project Manager",
         department: "Project Management",
         role: "PM",
-        email: "bakri@project.com",
+        email: "y.khan@alrammah.com.sa",
         phone: "+966541546402",
-        avatar: "https://raw.githubusercontent.com/bakriritis/sts/2f6658c98903b2759f98776c2f3d1b925022a1d1/Bakri.jpg"
+        avatar: process.env.REACT_APP_BAKRI_PHOTO,
+
     },
     "Rahim": {
         token: process.env.REACT_APP_REPORTER_TOKEN,  // ← من .env
@@ -81,11 +83,41 @@ const PERMISSIONS = {
     VIEWER: ["view_all"]
 };
 
-const WHATSAPP = {
-    projectManager: "+966541546402",
-};
 
 let sessionTimer;
+
+// Helper: Check if notification was sent recently
+const wasNotificationSent = (notificationId, hoursThreshold = 24) => {
+    const sentNotifications = JSON.parse(localStorage.getItem('sentNotifications') || '{}');
+    const lastSent = sentNotifications[notificationId];
+
+    if (!lastSent) return false;
+
+    const hoursSinceLastSent = (Date.now() - lastSent) / (1000 * 60 * 60);
+    return hoursSinceLastSent < hoursThreshold;
+};
+
+// Helper: Mark notification as sent
+const markNotificationSent = (notificationId) => {
+    const sentNotifications = JSON.parse(localStorage.getItem('sentNotifications') || '{}');
+    sentNotifications[notificationId] = Date.now();
+
+    // Clean old entries (older than 30 days)
+    const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
+    Object.keys(sentNotifications).forEach(key => {
+        if (sentNotifications[key] < thirtyDaysAgo) {
+            delete sentNotifications[key];
+        }
+    });
+
+    localStorage.setItem('sentNotifications', JSON.stringify(sentNotifications));
+};
+
+// Helper: Generate unique ID for notification
+const generateNotificationId = (type, identifier, date = null) => {
+    const dateStr = date ? new Date(date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+    return `${type}-${identifier}-${dateStr}`;
+};
 
 export default function App() {
     // Auth
@@ -95,6 +127,8 @@ export default function App() {
     const [loginError, setLoginError] = useState("");
 
     // UI
+    const [emailQueue, setEmailQueue] = useState([]);
+    const [isProcessingEmails, setIsProcessingEmails] = useState(false);
     const [view, setView] = useState("Overview");
     const [darkMode, setDarkMode] = useState(false);
     const [loading, setLoading] = useState(true);
@@ -168,13 +202,43 @@ export default function App() {
         return PERMISSIONS[currentUser.role]?.includes(perm) || PERMISSIONS[currentUser.role]?.includes("all");
     };
 
-    const sendWhatsApp = (type, message) => {
-        const phone = WHATSAPP.projectManager;
-        if (phone) {
-            const url = `https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(message)}`;
-            window.open(url, '_blank');
+    // ========== ENHANCED EMAIL SENDER ==========
+    const sendEmail = async (type, subject, message, notificationId = null) => {
+        // Check if already sent recently
+        if (notificationId && wasNotificationSent(notificationId, 24)) {
+            console.log(`⏭️ Skipping ${notificationId} - already sent within 24 hours`);
+            return false;
+        }
+
+        try {
+            await emailjs.send(
+                process.env.REACT_APP_EMAILJS_SERVICE_ID,
+                process.env.REACT_APP_EMAILJS_TEMPLATE_ID,
+                {
+                    to_email: currentUser?.email || "k.jehangir@alrammah.com.sa",
+                    subject: subject,
+                    message: message,
+                    type: type,
+                    project_name: PROJECT.name,
+                    timestamp: new Date().toLocaleString()
+                },
+                process.env.REACT_APP_EMAILJS_PUBLIC_KEY
+            );
+
+            console.log(`✅ Email sent: ${subject}`);
+
+            // Mark as sent
+            if (notificationId) {
+                markNotificationSent(notificationId);
+            }
+
+            return true;
+        } catch (err) {
+            console.error('❌ Email failed:', err);
+            return false;
         }
     };
+
 
     const formatCurrency = (amount) => {
         return `SAR ${Number(amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -199,6 +263,16 @@ export default function App() {
             clearTimeout(sessionTimer);
         };
     }, []);
+
+    useEffect(() => {
+        emailjs.init(process.env.REACT_APP_EMAILJS_PUBLIC_KEY);
+    }, []);
+
+    useEffect(() => {
+        if (budgetData.length || tasksData.length || invoicesData.length) {
+            generateNotifications();
+        }
+    }, [budgetData, tasksData, invoicesData]);
 
     useEffect(() => {
         const saved = localStorage.getItem("currentUser");
@@ -287,84 +361,369 @@ export default function App() {
         }
     }, [autoRefresh, isLoggedIn]);
 
+    // ========== EMAIL QUEUE PROCESSOR ==========
+    const processEmailQueue = async () => {
+        if (isProcessingEmails || emailQueue.length === 0) return;
+
+        setIsProcessingEmails(true);
+
+        // Process one email at a time with delay
+        for (const emailData of emailQueue) {
+            await sendEmail(
+                emailData.type,
+                emailData.subject,
+                emailData.message,
+                emailData.notificationId
+            );
+
+            // Delay between emails to avoid rate limiting
+            await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+
+        setEmailQueue([]);
+        setIsProcessingEmails(false);
+    };
+
+    // Process queue when it changes
+    useEffect(() => {
+        if (emailQueue.length > 0 && !isProcessingEmails) {
+            processEmailQueue();
+        }
+    }, [emailQueue, isProcessingEmails]);
+
     // ========== SMART NOTIFICATIONS ==========
+
     const generateNotifications = () => {
         const notifs = [];
+        const emailsToSend = [];
+        const today = new Date();
 
-        // Budget alerts
+        console.log('🔔 Generating notifications...');
+
+        // ========== BUDGET ALERTS ==========
         budgetData.forEach(item => {
             if (item.allocated > 0) {
                 const pct = (item.spent / item.allocated) * 100;
-                if (pct >= 80) {
+
+                // Alert at 80%, 90%, 95%
+                let shouldAlert = false;
+                let alertLevel = '';
+
+                if (pct >= 95) {
+                    shouldAlert = true;
+                    alertLevel = 'CRITICAL-95';
+                } else if (pct >= 90) {
+                    shouldAlert = true;
+                    alertLevel = 'HIGH-90';
+                } else if (pct >= 80) {
+                    shouldAlert = true;
+                    alertLevel = 'WARNING-80';
+                }
+
+                if (shouldAlert) {
+                    const notifId = generateNotificationId('budget', `${item.name}-${alertLevel}`);
+
                     notifs.push({
-                        id: `budget-${item.name}`,
-                        type: "warning",
-                        message: `⚠️ Budget Alert: ${item.name} at ${pct.toFixed(0)}%`,
+                        id: notifId,
+                        type: pct >= 95 ? "error" : pct >= 90 ? "warning" : "info",
+                        message: `${pct >= 95 ? '🚨' : '⚠️'} Budget: ${item.name} at ${pct.toFixed(0)}%`,
                         time: "now",
-                        priority: pct >= 90 ? "high" : "medium"
+                        priority: pct >= 95 ? "critical" : pct >= 90 ? "high" : "medium"
                     });
+
+                    // Only send email if not sent in last 24 hours
+                    if (!wasNotificationSent(notifId, 24)) {
+                        emailsToSend.push({
+                            type: 'budget',
+                            subject: `${pct >= 95 ? '🚨 CRITICAL' : '⚠️'} Budget Alert: ${item.name}`,
+                            message: `
+Budget Category: ${item.name}
+Allocated: SAR ${item.allocated.toLocaleString()}
+Spent: SAR ${item.spent.toLocaleString()} (${pct.toFixed(1)}%)
+Remaining: SAR ${(item.allocated - item.spent).toLocaleString()}
+
+${pct >= 95 ? '⚡ IMMEDIATE ACTION REQUIRED!' : pct >= 90 ? '⚠️ Action needed soon' : '📊 Monitor closely'}
+
+Project: ${PROJECT.name}
+Time: ${new Date().toLocaleString()}
+`,
+                            notificationId: notifId
+                        });
+                    }
                 }
             }
         });
 
-        // Deadline warnings
-        const today = new Date();
+        // ========== TASK DEADLINES ==========
         tasksData.forEach(task => {
             if (task.deadlineDate && task.status !== "Completed") {
                 const deadline = new Date(task.deadlineDate);
-                const diffMs = deadline - today;
-                const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+                const diffDays = Math.ceil((deadline - today) / (1000 * 60 * 60 * 24));
 
-                if (diffDays <= 3 && diffDays >= 0) {
+                // Alert for tasks due in 7, 3, 1 days or overdue
+                if (diffDays <= 7 && diffDays >= 0) {
+                    const notifId = generateNotificationId('task-due', task.id, task.deadlineDate);
+
                     notifs.push({
-                        id: `task-${task.id}`,
-                        type: "warning",
+                        id: notifId,
+                        type: diffDays <= 1 ? "error" : "warning",
                         message: `⏰ Task "${task.subTask || task.system}" due in ${diffDays} day${diffDays !== 1 ? 's' : ''}`,
                         time: "now",
                         priority: diffDays <= 1 ? "high" : "medium"
                     });
+
+                    // Send email for critical deadlines (1, 3, 7 days)
+                    if ([1, 3, 7].includes(diffDays) && !wasNotificationSent(notifId, 24)) {
+                        emailsToSend.push({
+                            type: 'task-deadline',
+                            subject: `⏰ Task Due ${diffDays === 1 ? 'TOMORROW' : `in ${diffDays} days`}`,
+                            message: `
+Task: ${task.subTask || task.system}
+System: ${task.system}
+Assigned to: ${task.assigned_to}
+Deadline: ${new Date(task.deadlineDate).toLocaleDateString()}
+Days remaining: ${diffDays}
+Status: ${task.status}
+
+${diffDays === 1 ? '⚡ DUE TOMORROW - URGENT!' : `📅 ${diffDays} days left`}
+
+Project: ${PROJECT.name}
+`,
+                            notificationId: notifId
+                        });
+                    }
                 } else if (diffDays < 0) {
+                    const notifId = generateNotificationId('task-overdue', task.id, task.deadlineDate);
+
                     notifs.push({
-                        id: `overdue-${task.id}`,
+                        id: notifId,
                         type: "error",
-                        message: `🚨 OVERDUE: "${task.subTask || task.system}" was due ${Math.abs(diffDays)} day${Math.abs(diffDays) !== 1 ? 's' : ''} ago`,
+                        message: `🚨 OVERDUE: "${task.subTask || task.system}" by ${Math.abs(diffDays)} day${Math.abs(diffDays) !== 1 ? 's' : ''}`,
                         time: "now",
-                        priority: "high"
+                        priority: "critical"
                     });
+
+                    // Send overdue email daily
+                    if (!wasNotificationSent(notifId, 24)) {
+                        emailsToSend.push({
+                            type: 'task-overdue',
+                            subject: `🚨 OVERDUE TASK: ${task.subTask || task.system}`,
+                            message: `
+⚠️ TASK OVERDUE ALERT
+
+Task: ${task.subTask || task.system}
+System: ${task.system}
+Assigned to: ${task.assigned_to}
+Was due: ${new Date(task.deadlineDate).toLocaleDateString()}
+Overdue by: ${Math.abs(diffDays)} day${Math.abs(diffDays) !== 1 ? 's' : ''}
+Current status: ${task.status}
+
+🚨 IMMEDIATE ACTION REQUIRED!
+
+Project: ${PROJECT.name}
+`,
+                            notificationId: notifId
+                        });
+                    }
                 }
             }
         });
 
-        // Invoice alerts
+        // ========== INVOICE ALERTS ==========
         invoicesData.forEach(invoice => {
             if (invoice.status === "Pending" && invoice.dueDate) {
                 const dueDate = new Date(invoice.dueDate);
-                const diffMs = dueDate - today;
-                const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+                const diffDays = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
 
-                if (diffDays <= 3 && diffDays >= 0) {
+                if (diffDays <= 7 && diffDays >= 0) {
+                    const notifId = generateNotificationId('invoice-due', invoice.invoiceNumber, invoice.dueDate);
+
                     notifs.push({
-                        id: `invoice-${invoice.invoiceNumber}`,
-                        type: "warning",
+                        id: notifId,
+                        type: diffDays <= 3 ? "warning" : "info",
                         message: `💰 Invoice ${invoice.invoiceNumber} due in ${diffDays} day${diffDays !== 1 ? 's' : ''}`,
                         time: "now",
-                        priority: "medium"
+                        priority: diffDays <= 3 ? "high" : "medium"
                     });
+
+                    // Email at 7, 3, 1 days
+                    if ([1, 3, 7].includes(diffDays) && !wasNotificationSent(notifId, 24)) {
+                        emailsToSend.push({
+                            type: 'invoice',
+                            subject: `💰 Invoice Due ${diffDays === 1 ? 'Tomorrow' : `in ${diffDays} days`}`,
+                            message: `
+Invoice: ${invoice.invoiceNumber}
+Vendor: ${invoice.vendor}
+Amount: SAR ${Number(invoice.amount).toLocaleString()}
+Category: ${invoice.category}
+Due Date: ${new Date(invoice.dueDate).toLocaleDateString()}
+Days remaining: ${diffDays}
+
+${diffDays === 1 ? '⚡ Payment due tomorrow!' : `📅 ${diffDays} days to payment`}
+
+Project: ${PROJECT.name}
+`,
+                            notificationId: notifId
+                        });
+                    }
                 } else if (diffDays < 0) {
+                    const notifId = generateNotificationId('invoice-overdue', invoice.invoiceNumber, invoice.dueDate);
+
                     notifs.push({
-                        id: `invoice-overdue-${invoice.invoiceNumber}`,
+                        id: notifId,
                         type: "error",
                         message: `🚨 Invoice ${invoice.invoiceNumber} overdue by ${Math.abs(diffDays)} day${Math.abs(diffDays) !== 1 ? 's' : ''}`,
                         time: "now",
-                        priority: "high"
+                        priority: "critical"
                     });
+
+                    // Daily overdue reminder
+                    if (!wasNotificationSent(notifId, 24)) {
+                        emailsToSend.push({
+                            type: 'invoice-overdue',
+                            subject: `🚨 OVERDUE INVOICE: ${invoice.invoiceNumber}`,
+                            message: `
+⚠️ OVERDUE PAYMENT ALERT
+
+Invoice: ${invoice.invoiceNumber}
+Vendor: ${invoice.vendor}
+Amount: SAR ${Number(invoice.amount).toLocaleString()}
+Was due: ${new Date(invoice.dueDate).toLocaleDateString()}
+Overdue by: ${Math.abs(diffDays)} day${Math.abs(diffDays) !== 1 ? 's' : ''}
+
+🚨 PAYMENT REQUIRED URGENTLY!
+
+Project: ${PROJECT.name}
+`,
+                            notificationId: notifId
+                        });
+                    }
                 }
             }
         });
 
+        // ========== NEW COMMENT ALERT ==========
+        // Check for new comments in last hour
+        const oneHourAgo = Date.now() - (60 * 60 * 1000);
+        const recentComments = commentsData.filter(comment => {
+            if (comment.timestamp) {
+                const commentTime = new Date(comment.timestamp).getTime();
+                return commentTime > oneHourAgo;
+            }
+            return false;
+        });
+
+        recentComments.forEach(comment => {
+            const notifId = generateNotificationId('comment', comment.timestamp);
+
+            notifs.push({
+                id: notifId,
+                type: "info",
+                message: `💬 New comment from ${comment.username}: ${comment.comment.substring(0, 50)}...`,
+                time: "now",
+                priority: comment.priority === "High" ? "high" : "low"
+            });
+
+            // Send email for high priority comments only
+            if (comment.priority === "High" && !wasNotificationSent(notifId, 1)) {
+                emailsToSend.push({
+                    type: 'comment',
+                    subject: `💬 New High Priority Comment`,
+                    message: `
+New Comment Posted:
+
+From: ${comment.username} (${comment.position})
+Department: ${comment.department}
+Priority: ${comment.priority}
+
+Comment:
+"${comment.comment}"
+
+Time: ${comment.timestamp}
+Project: ${PROJECT.name}
+`,
+                    notificationId: notifId
+                });
+            }
+        });
+
+        // ========== MATERIALS DELIVERY PENDING ==========
+        const pendingMaterials = materialsData.filter(m => m.delivery_status !== "Delivered");
+        if (pendingMaterials.length > 0) {
+            const notifId = generateNotificationId('materials-pending', today.toISOString().split('T')[0]);
+
+            notifs.push({
+                id: notifId,
+                type: "info",
+                message: `📦 ${pendingMaterials.length} material${pendingMaterials.length !== 1 ? 's' : ''} pending delivery`,
+                time: "now",
+                priority: "low"
+            });
+
+            // Weekly reminder (every Monday)
+            if (today.getDay() === 1 && !wasNotificationSent(notifId, 168)) { // 168 hours = 1 week
+                const systemSummary = {};
+                pendingMaterials.forEach(m => {
+                    if (!systemSummary[m.system]) {
+                        systemSummary[m.system] = 0;
+                    }
+                    systemSummary[m.system]++;
+                });
+
+                const summaryText = Object.entries(systemSummary)
+                    .map(([system, count]) => `  - ${system}: ${count} item${count !== 1 ? 's' : ''}`)
+                    .join('\n');
+
+                emailsToSend.push({
+                    type: 'materials',
+                    subject: '📦 Weekly Materials Status Update',
+                    message: `
+Pending Materials Summary:
+
+Total pending: ${pendingMaterials.length} items
+
+By System:
+${summaryText}
+
+Please coordinate with suppliers for delivery updates.
+
+Project: ${PROJECT.name}
+`,
+                    notificationId: notifId
+                });
+            }
+        }
+
+        // Update notifications state
         setNotifications(notifs);
+
+        // Queue emails for sending
+        if (emailsToSend.length > 0) {
+            console.log(`📧 Queuing ${emailsToSend.length} email(s) for sending...`);
+            setEmailQueue(prev => [...prev, ...emailsToSend]);
+        } else {
+            console.log('✅ No new emails to send');
+        }
     };
 
+    // ========== MODIFIED USEEFFECTS ==========
+
+    // Initialize EmailJS once
+    useEffect(() => {
+        emailjs.init(process.env.REACT_APP_EMAILJS_PUBLIC_KEY);
+    }, []);
+
+    // Generate notifications ONLY when data changes AND user is logged in
+    useEffect(() => {
+        if (isLoggedIn && (budgetData.length || tasksData.length || invoicesData.length)) {
+            // Debounce to avoid multiple calls
+            const timer = setTimeout(() => {
+                generateNotifications();
+            }, 1000);
+
+            return () => clearTimeout(timer);
+        }
+    }, [budgetData, tasksData, invoicesData, commentsData, materialsData, isLoggedIn]);
     // ========== AUTH ==========
 
     /**
@@ -480,11 +839,12 @@ export default function App() {
             const reader = new FileReader();
 
             reader.onload = async (e) => {
-                const base64Data = e.target.result.split(',')[1];
-
                 try {
-                    const res = await fetch(GOOGLE_SHEETS.photoUpload, {
+                    const base64Data = e.target.result.split(',')[1];
+
+                    await fetch(GOOGLE_SHEETS.photoUpload, {
                         method: 'POST',
+                        mode: 'no-cors',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             fileData: base64Data,
@@ -497,24 +857,17 @@ export default function App() {
                         })
                     });
 
-                    // لو السكربت يرجع JSON
-                    const result = await res.json();
+                    alert("Photo uploaded successfully!");
+                    setPhotoUploadForm({ file: null, system: "", description: "" });
 
-                    if (result.success) {
-                        alert("Photo uploaded successfully!");
-                        setPhotoUploadForm({ file: null, system: "", description: "" });
-
-                        // مباشرة بعد رفع الصورة جلب البيانات لتحديث الداشبورد
+                    setTimeout(() => {
                         fetchData();
-                    } else {
-                        console.error("Upload failed:", result.error);
-                        alert("Upload failed. " + result.error);
-                    }
+                        setUploadingPhoto(false);
+                    }, 2000);
 
-                } catch (err) {
-                    console.error("Fetch error:", err);
+                } catch (innerErr) {
+                    console.error("Fetch error:", innerErr);
                     alert("Upload failed. Check your internet connection.");
-                } finally {
                     setUploadingPhoto(false);
                 }
             };
@@ -532,7 +885,6 @@ export default function App() {
             setUploadingPhoto(false);
         }
     };
-
 
     const addInvoice = async () => {
         // Validate all required fields
@@ -801,9 +1153,11 @@ export default function App() {
             progress: sysTasks.length ? Math.round((completed / sysTasks.length) * 100) : 0
         };
     });
+    //console.log(process.env.REACT_APP_KHALID_PHOTO)
 
     // ========== MAIN DASHBOARD ==========
     return (
+
         <div className={`min-h-screen ${theme.bg} ${theme.text}`}>
             {/* HEADER */}
             <div className={`${theme.card} border-b ${theme.border} sticky top-0 z-40 shadow-lg`}>
@@ -818,6 +1172,7 @@ export default function App() {
                                 <p className="text-sm text-gray-500">{PROJECT.client}</p>
                             </div>
                         </div>
+
 
                         <div className="flex items-center gap-3">
                             <button
@@ -869,6 +1224,8 @@ export default function App() {
                             </button>
 
                             <div className="flex items-center gap-3 border-l pl-3">
+
+
                                 <img src={currentUser.avatar} alt={currentUser.name} className="w-10 h-10 rounded-full" />
                                 <div className="text-sm">
                                     <p className="font-semibold">{currentUser.name}</p>
@@ -879,6 +1236,11 @@ export default function App() {
                                 </button>
                             </div>
                         </div>
+                    </div>
+                    <div>
+
+
+
                     </div>
 
                     {/* NAVIGATION */}
@@ -1483,67 +1845,40 @@ export default function App() {
                 )}
 
 
-                {/* PHOTOS VIEW */}
+                {/* PHOTOS */}
                 {view === "Photos" && (
                     <div className="space-y-6">
-                        {/* UPLOAD SECTION */}
                         {hasPermission('upload') && (
                             <div className={`${theme.card} rounded-xl p-6 shadow-lg border ${theme.border}`}>
                                 <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
-                                    <Upload className="text-blue-600" size={24} /> Upload Photo
+                                    <Upload className="text-blue-600" size={24} />Upload Photo
                                 </h3>
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    <input
-                                        type="file"
-                                        accept="image/*"
-                                        onChange={(e) =>
-                                            setPhotoUploadForm({ ...photoUploadForm, file: e.target.files[0] })
-                                        }
-                                        className={`px-4 py-2 rounded-lg border ${theme.border} ${theme.card}`}
-                                    />
-                                    <select
-                                        value={photoUploadForm.system}
-                                        onChange={(e) =>
-                                            setPhotoUploadForm({ ...photoUploadForm, system: e.target.value })
-                                        }
-                                        className={`px-4 py-2 rounded-lg border ${theme.border} ${theme.card}`}
-                                    >
+                                    <input type="file" accept="image/*" onChange={(e) => setPhotoUploadForm({ ...photoUploadForm, file: e.target.files[0] })}
+                                        className={`px-4 py-2 rounded-lg border ${theme.border} ${theme.card}`} />
+                                    <select value={photoUploadForm.system} onChange={(e) => setPhotoUploadForm({ ...photoUploadForm, system: e.target.value })}
+                                        className={`px-4 py-2 rounded-lg border ${theme.border} ${theme.card}`}>
                                         <option value="">Select System</option>
-                                        {[...new Set(tasksData.map(t => t.system))].filter(Boolean).map(s => (
-                                            <option key={s}>{s}</option>
-                                        ))}
+                                        {[...new Set(tasksData.map(t => t.system))].filter(Boolean).map(s => <option key={s}>{s}</option>)}
                                     </select>
-                                    <input
-                                        type="text"
-                                        placeholder="Description"
-                                        value={photoUploadForm.description}
-                                        onChange={(e) =>
-                                            setPhotoUploadForm({ ...photoUploadForm, description: e.target.value })
-                                        }
-                                        className={`px-4 py-2 rounded-lg border ${theme.border} ${theme.card}`}
-                                    />
+                                    <input type="text" placeholder="Description" value={photoUploadForm.description}
+                                        onChange={(e) => setPhotoUploadForm({ ...photoUploadForm, description: e.target.value })}
+                                        className={`px-4 py-2 rounded-lg border ${theme.border} ${theme.card}`} />
                                 </div>
-                                <button
-                                    onClick={uploadPhoto}
-                                    disabled={!photoUploadForm.file || !photoUploadForm.system || uploadingPhoto}
-                                    className="mt-4 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg font-semibold disabled:opacity-50"
-                                >
+                                <button onClick={uploadPhoto} disabled={!photoUploadForm.file || !photoUploadForm.system || uploadingPhoto}
+                                    className="mt-4 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg font-semibold disabled:opacity-50">
                                     {uploadingPhoto ? 'Uploading...' : 'Upload Photo'}
                                 </button>
                             </div>
                         )}
 
-                        {/* PHOTOS GRID */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                             {photosData.map((photo, i) => (
-                                <div
-                                    key={i}
-                                    className="border rounded-lg overflow-hidden shadow hover:shadow-lg cursor-pointer transition"
-                                    onClick={() => setModalPhoto(photo)}
-                                >
+                                <div key={i} className="border rounded-lg overflow-hidden shadow hover:shadow-lg cursor-pointer transition"
+                                    onClick={() => setModalPhoto(photo)}>
                                     {photo.photoUrl ? (
                                         <img
-                                            src={photo.photoUrl} // Thumbnail صغير للبطاقة
+                                            src={photo.photoUrl}
                                             alt={photo.description || 'Photo'}
                                             className="w-full h-48 object-cover"
                                         />
@@ -1560,19 +1895,13 @@ export default function App() {
                             ))}
                         </div>
 
-                        {/* MODAL */}
                         {modalPhoto && (
-                            <div
-                                className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-                                onClick={() => setModalPhoto(null)}
-                            >
-                                <div
-                                    className="bg-white rounded-lg max-w-3xl w-full"
-                                    onClick={(e) => e.stopPropagation()}
-                                >
-                                    {modalPhoto.fullUrl || modalPhoto.photoUrl ? (
+                            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+                                onClick={() => setModalPhoto(null)}>
+                                <div className="bg-white rounded-lg max-w-3xl w-full" onClick={(e) => e.stopPropagation()}>
+                                    {modalPhoto.photoUrl ? (
                                         <img
-                                            src={modalPhoto.fullUrl || modalPhoto.photoUrl} // الصورة الكبيرة في الـ Modal
+                                            src={modalPhoto.photoUrl}
                                             alt={modalPhoto.description}
                                             className="w-full object-contain max-h-96"
                                         />
@@ -1584,14 +1913,10 @@ export default function App() {
                                     <div className="p-4">
                                         <h4 className="font-bold text-lg">{modalPhoto.system}</h4>
                                         <p className="text-gray-700">{modalPhoto.description}</p>
-                                        {modalPhoto.fullUrl && (
-                                            <a
-                                                href={modalPhoto.fullUrl}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="text-blue-500 text-sm mt-2 inline-block"
-                                            >
-                                                Open full image in new tab
+                                        {modalPhoto.photoUrl && (
+                                            <a href={modalPhoto.photoUrl} target="_blank" rel="noopener noreferrer"
+                                                className="text-blue-500 text-sm mt-2 inline-block">
+                                                Open in new tab
                                             </a>
                                         )}
                                     </div>
@@ -1600,7 +1925,6 @@ export default function App() {
                         )}
                     </div>
                 )}
-
             </div>
             {/* COMMENTS SECTION */}
             {view === "Comments" && (
