@@ -52,7 +52,7 @@ const USERS = {
         role: "ADMIN",
         email: "y.khan@alrammah.com.sa",
         phone: "+966541546402",
-        avatar: process.env.REACT_APP_KHALID_PHOTO,
+        avatar: "/avatars/khalid.jpg",
     },
     "bakri": {
         token: process.env.REACT_APP_PM_TOKEN,  // ← من .env
@@ -62,7 +62,7 @@ const USERS = {
         role: "PM",
         email: "y.khan@alrammah.com.sa",
         phone: "+966541546402",
-        avatar: process.env.REACT_APP_BAKRI_PHOTO,
+        avatar: "/avatars/Bakri.jpg",
 
     },
     "Rahim": {
