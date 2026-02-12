@@ -11,7 +11,7 @@ import {
     ChevronRight, MessageSquare, Award, FileText, Shield, Search, Bell, LogOut, Send,
     MapPin, Phone, Mail, Briefcase, Star, RefreshCw, Upload, Receipt, Wallet,
     Plus, Eye, Edit, Trash2, Package, Image as ImageIcon, CreditCard, X,
-    Check, FileSpreadsheet, TrendingDown as ArrowDown, TrendingUp as ArrowUp
+    Check, FileSpreadsheet, TrendingDown as ArrowDown, TrendingUp as ArrowUp, Folder, ChevronLeft, BarChart2, File, Lock, ChevronDown
 } from "lucide-react";
 
 // ========== CONFIGURATION ==========
@@ -32,6 +32,14 @@ const GOOGLE_SHEETS = {
     paymentMilestones: process.env.REACT_APP_PAYMENT_MILESTONES_URL || "",
     changeOrders: process.env.REACT_APP_CHANGE_ORDERS_URL || "",
     cashFlow: process.env.REACT_APP_CASH_FLOW_URL || "",
+    documents: process.env.REACT_APP_DOCUMENTS_URL,
+    documentUpload: process.env.REACT_APP_DOCUMENT_UPLOAD_URL,
+
+    //New
+    budgetCategories: process.env.REACT_APP_BUDGET_CATEGORIES_URL,
+    budgetExpenses: process.env.REACT_APP_BUDGET_EXPENSES_URL,
+    budgetCategoryAdd: process.env.REACT_APP_BUDGET_CATEGORY_ADD_URL,
+    budgetExpenseAdd: process.env.REACT_APP_BUDGET_EXPENSE_ADD_URL,
 };
 
 const PROJECT = {
@@ -40,8 +48,16 @@ const PROJECT = {
     contract: "Ritis 01 24 0953 001 R 05",
     // start: new Date(2025, 2, 1),
     end: new Date(2026, 2, 15),
-    totalValue: 1645659
+    totalValue: 1466974.50
 };
+// قائمة الفئات الممكنة للمستندات
+const DOCUMENT_CATEGORIES = [
+    "Contract", "Drawing", "Permit", "Test Report",
+    "Warranty", "Change Order", "Meeting Minutes",
+    "Submittal", "Invoice", "Photo", "Other"
+];
+
+
 
 const USERS = {
     "Khalid": {
@@ -52,7 +68,7 @@ const USERS = {
         role: "ADMIN",
         email: "y.khan@alrammah.com.sa",
         phone: "+966541546402",
-        avatar: "/avatars/khalid.jpg",
+        avatar: process.env.REACT_APP_KHALID_PHOTO,
     },
     "bakri": {
         token: process.env.REACT_APP_PM_TOKEN,  // ← من .env
@@ -62,7 +78,7 @@ const USERS = {
         role: "PM",
         email: "y.khan@alrammah.com.sa",
         phone: "+966541546402",
-        avatar: "/avatars/Bakri.jpg",
+        avatar: process.env.REACT_APP_BAKRI_PHOTO,
 
     },
     "Rahim": {
@@ -119,12 +135,14 @@ const generateNotificationId = (type, identifier, date = null) => {
     return `${type}-${identifier}-${dateStr}`;
 };
 
+
 export default function App() {
     // Auth
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [currentUser, setCurrentUser] = useState(null);
     const [loginForm, setLoginForm] = useState({ username: "", password: "" });
     const [loginError, setLoginError] = useState("");
+
 
     // UI
     const [emailQueue, setEmailQueue] = useState([]);
@@ -140,6 +158,13 @@ export default function App() {
     const [filterStatus, setFilterStatus] = useState("All");
     const [filterOwner, setFilterOwner] = useState("All");
     const [modalPhoto, setModalPhoto] = useState(null);
+    const [uploadingCategory, setUploadingCategory] = useState(false);
+    // في الـ State - أضف
+    const [uploadingExpense, setUploadingExpense] = useState(false);
+    const [selectedMonth, setSelectedMonth] = useState("all");
+    const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+
+
 
     // Data
     const [tasksData, setTasksData] = useState([]);
@@ -155,6 +180,1464 @@ export default function App() {
     const [paymentMilestonesData, setPaymentMilestonesData] = useState([]);
     const [changeOrdersData, setChangeOrdersData] = useState([]);
     const [cashFlowData, setCashFlowData] = useState([]);
+    const [budgetCategories, setBudgetCategories] = useState([]);
+    const [budgetExpenses, setBudgetExpenses] = useState([]);
+    const [expandedCategory, setExpandedCategory] = useState(null);
+    const [showAddCategoryModal, setShowAddCategoryModal] = useState(false);
+    const [showAddExpenseModal, setShowAddExpenseModal] = useState(false);
+    const [selectedCategory, setSelectedCategory] = useState(null);
+
+    const [categoryForm, setCategoryForm] = useState({
+        category_name: '',
+        allocated: '',
+        notes: ''
+    });
+
+    const [expenseForm, setExpenseForm] = useState({
+        category_id: '',
+        amount: '',
+        recipient: '',
+        invoice_no: '',
+        expense_date: new Date().toISOString().split('T')[0],
+        description: '',
+        attachment: null
+    });
+
+    // Gantt Chart State
+    const [ganttView, setGanttView] = useState("month"); // month, quarter, year
+    const [ganttStartDate, setGanttStartDate] = useState(new Date(2026, 0, 1)); // Jan 1, 2026
+    const [selectedTask, setSelectedTask] = useState(null);
+    const [showTaskDetails, setShowTaskDetails] = useState(false);
+
+    // Documentation State
+    const [documentsData, setDocumentsData] = useState([]);
+    useEffect(() => {
+        console.log('documentsData updated:', documentsData);
+    }, [documentsData]);
+
+    const [showUploadModal, setShowUploadModal] = useState(false);
+    const [documentFilter, setDocumentFilter] = useState("All");
+    const [documentSearchTerm, setDocumentSearchTerm] = useState("");
+    const [uploadForm, setUploadForm] = useState({
+        file: null,
+        category: "Contract",
+        title: "",
+        description: "",
+        tags: ""
+    });
+    const [uploadingDocument, setUploadingDocument] = useState(false);
+
+    // حساب Total Spent لكل بند
+    const getCategorySpent = (categoryId) => {
+        return budgetExpenses
+            .filter(exp => exp.category_id === categoryId)
+            .reduce((sum, exp) => sum + exp.amount, 0);
+    };
+
+    // حساب Remaining
+    const getCategoryRemaining = (category) => {
+        const spent = getCategorySpent(category.category_id);
+        return category.allocated - spent;
+    };
+
+    // Get expenses لبند معين
+    const getCategoryExpenses = (categoryId) => {
+        return budgetExpenses.filter(exp => exp.category_id === categoryId);
+    };
+
+    //============AddBudget======================
+
+    const addBudgetCategory = async () => {
+        if (!categoryForm.category_name || !categoryForm.allocated) {
+            alert("Please fill all required fields");
+            return;
+        }
+        setUploadingCategory(true);
+
+        try {
+            const categoryId = `BDG-${Date.now()}`;
+
+            const params = new URLSearchParams();
+            params.append('category_id', categoryId);
+            params.append('category_name', categoryForm.category_name);
+            params.append('allocated', categoryForm.allocated);
+            params.append('notes', categoryForm.notes);
+            params.append('created_by', currentUser.name);
+            params.append('created_date', new Date().toISOString());
+
+            await fetch(GOOGLE_SHEETS.budgetCategoryAdd, {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: params.toString()
+            });
+
+            alert("Budget category added successfully!");
+            setShowAddCategoryModal(false);
+            setCategoryForm({ category_name: '', allocated: '', notes: '' });
+            setTimeout(fetchData, 2000);
+        } catch (err) {
+            console.error(err);
+            alert("Failed to add category");
+        }
+    };
+
+    //=================AddExpences================
+
+    const addBudgetExpense = async () => {
+        if (!expenseForm.category_id || !expenseForm.amount || !expenseForm.recipient) {
+            alert("Please fill all required fields");
+            return;
+        }
+        setUploadingExpense(true); // ← Loading state
+
+        try {
+            const expenseId = `EXP-${Date.now()}`;
+
+            // Upload attachment if exists
+            let attachmentUrl = null;
+            if (expenseForm.attachment) {
+                const reader = new FileReader();
+                const base64Data = await new Promise((resolve) => {
+                    reader.onload = (e) => resolve(e.target.result.split(',')[1]);
+                    reader.readAsDataURL(expenseForm.attachment);
+                });
+
+                // Upload to Google Drive (using existing upload script)
+                const uploadResponse = await fetch(GOOGLE_SHEETS.documentUpload, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        fileData: base64Data,
+                        fileName: expenseForm.attachment.name,
+                        mimeType: expenseForm.attachment.type,
+                        category: 'Budget',
+                        title: `Expense ${expenseId}`,
+                        uploadedBy: currentUser.name
+                    })
+                });
+
+                // Note: no-cors won't return data, so we'll save without URL for now
+                // Or use a different upload method that returns the URL
+            }
+
+            const params = new URLSearchParams();
+            params.append('expense_id', expenseId);
+            params.append('category_id', expenseForm.category_id);
+            params.append('amount', expenseForm.amount);
+            params.append('recipient', expenseForm.recipient);
+            params.append('invoice_no', expenseForm.invoice_no);
+            params.append('expense_date', expenseForm.expense_date);
+            params.append('description', expenseForm.description);
+            params.append('attachment_url', attachmentUrl || '');
+            params.append('added_by', currentUser.name);
+            params.append('timestamp', new Date().toISOString());
+
+            await fetch(GOOGLE_SHEETS.budgetExpenseAdd, {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: params.toString()
+            });
+
+            alert("Expense added successfully!");
+            setShowAddExpenseModal(false);
+            setExpenseForm({
+                category_id: '',
+                amount: '',
+                recipient: '',
+                invoice_no: '',
+                expense_date: new Date().toISOString().split('T')[0],
+                description: '',
+                attachment: null
+            });
+            setTimeout(fetchData, 2000);
+        } catch (err) {
+            console.error(err);
+            alert("Failed to add expense");
+        }
+    };
+
+
+    // ========== GANTT CHART FUNCTIONS ==========
+
+    // Generate timeline dates based on view
+    const getTimelineColumns = () => {
+        const columns = [];
+        const start = new Date(ganttStartDate);
+
+        if (ganttView === "month") {
+            // Show 6 months
+            for (let i = 0; i < 6; i++) {
+                const date = new Date(start);
+                date.setMonth(start.getMonth() + i);
+                columns.push({
+                    label: date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+                    date: new Date(date)
+                });
+            }
+        } else if (ganttView === "quarter") {
+            // Show 4 quarters
+            for (let i = 0; i < 4; i++) {
+                const date = new Date(start);
+                date.setMonth(start.getMonth() + (i * 3));
+                columns.push({
+                    label: `Q${Math.floor(date.getMonth() / 3) + 1} ${date.getFullYear()}`,
+                    date: new Date(date)
+                });
+            }
+        } else {
+            // Show 2 years
+            for (let i = 0; i < 2; i++) {
+                const date = new Date(start);
+                date.setFullYear(start.getFullYear() + i);
+                columns.push({
+                    label: date.getFullYear().toString(),
+                    date: new Date(date)
+                });
+            }
+        }
+
+        return columns;
+    };
+
+    // Calculate task position and width in timeline
+    const getTaskBarStyle = (task, columns) => {
+        if (!task.startDate || !task.deadlineDate) return null;
+
+        const taskStart = new Date(task.startDate);
+        const taskEnd = new Date(task.deadlineDate);
+        const timelineStart = columns[0].date;
+        const timelineEnd = new Date(columns[columns.length - 1].date);
+
+        // Calculate if task is within visible timeline
+        if (taskEnd < timelineStart || taskStart > timelineEnd) return null;
+
+        const totalDays = (timelineEnd - timelineStart) / (1000 * 60 * 60 * 24);
+        const taskStartDays = Math.max(0, (taskStart - timelineStart) / (1000 * 60 * 60 * 24));
+        const taskDuration = (taskEnd - taskStart) / (1000 * 60 * 60 * 24);
+
+        const left = (taskStartDays / totalDays) * 100;
+        const width = (taskDuration / totalDays) * 100;
+
+        return { left: `${left}%`, width: `${Math.max(width, 2)}%` };
+    };
+
+    // Get task color based on status
+    const getTaskColor = (task) => {
+        if (task.status === "Completed") return "bg-green-500";
+        if (task.status === "In Progress") return "bg-blue-500";
+        if (new Date(task.deadlineDate) < new Date()) return "bg-red-500";
+        return "bg-gray-400";
+    };
+
+    // Navigate timeline
+    const navigateTimeline = (direction) => {
+        const newDate = new Date(ganttStartDate);
+
+        if (ganttView === "month") {
+            newDate.setMonth(newDate.getMonth() + (direction === "next" ? 6 : -6));
+        } else if (ganttView === "quarter") {
+            newDate.setMonth(newDate.getMonth() + (direction === "next" ? 12 : -12));
+        } else {
+            newDate.setFullYear(newDate.getFullYear() + (direction === "next" ? 2 : -2));
+        }
+
+        setGanttStartDate(newDate);
+    };
+
+    // Group tasks by system
+    const groupedTasks = tasksData.reduce((groups, task) => {
+        const system = task.system || "Other";
+        if (!groups[system]) groups[system] = [];
+        groups[system].push(task);
+        return groups;
+    }, {});
+
+    // ========== DOCUMENTATION FUNCTIONS ==========
+
+    // Delete document
+    const deleteDocument = async (fileId) => {
+        // تأكد من صلاحية الحذف
+        if (!window.confirm("Are you sure you want to delete this document?")) return;
+
+        try {
+            // إعداد الباراميترات
+            const params = new URLSearchParams();
+            params.append("action", "delete");
+            params.append("fileId", fileId);
+
+            // استدعاء سكربت Google Apps Script
+            const res = await fetch(GOOGLE_SHEETS.documentUpload, {
+                method: "POST",
+                mode: "no-cors", // نفس وضع upload
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: params.toString(),
+            });
+
+            // نطبع في الكونسل عشان نتاكد
+            console.log("Delete response:", res);
+
+            // إعادة تحميل البيانات بعد الحذف
+            setTimeout(fetchData, 1000);
+
+            alert("Document deleted successfully!");
+
+        } catch (err) {
+            console.error("Delete failed:", err);
+            alert("Delete failed");
+        }
+    };
+
+
+    // Upload document
+    const uploadDocument = async () => {
+        if (!uploadForm.file || !uploadForm.title) {
+            alert("Please provide file and title");
+            return;
+        }
+
+        setUploadingDocument(true);
+
+        try {
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                try {
+                    const base64Data = e.target.result.split(',')[1];
+
+                    const params = new URLSearchParams();
+                    params.append('fileData', base64Data);
+                    params.append('fileName', uploadForm.file.name);
+                    params.append('mimeType', uploadForm.file.type);
+                    params.append('category', uploadForm.category);
+                    params.append('title', uploadForm.title);
+                    params.append('description', uploadForm.description);
+                    params.append('tags', uploadForm.tags);
+                    params.append('uploadedBy', currentUser.name);
+                    params.append('timestamp', new Date().toISOString());
+
+                    await fetch(GOOGLE_SHEETS.documentUpload, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: params.toString()
+                    });
+
+                    alert("Document uploaded successfully!");
+                    setShowUploadModal(false);
+                    setUploadForm({
+                        file: null,
+                        category: "Contract",
+                        title: "",
+                        description: "",
+                        tags: ""
+                    });
+                    setTimeout(fetchData, 2000);
+                } catch (err) {
+                    console.error(err);
+                    alert("Upload failed");
+                }
+                setUploadingDocument(false);
+            };
+            reader.readAsDataURL(uploadForm.file);
+        } catch (err) {
+            console.error(err);
+            alert("Upload error");
+            setUploadingDocument(false);
+        }
+    };
+
+    const filteredExpenses = budgetExpenses.filter(exp => {
+        const date = new Date(exp.expense_date);
+
+        const matchesYear = date.getFullYear() === Number(selectedYear);
+
+        const matchesMonth =
+            selectedMonth === "all" ||
+            date.getMonth() === Number(selectedMonth);
+
+        return matchesYear && matchesMonth;
+    });
+    const expenseChartData = budgetCategories.map(category => {
+        const categoryExpenses = filteredExpenses.filter(
+            exp => exp.category_id === category.category_id
+        );
+
+        const totalSpent = categoryExpenses.reduce(
+            (sum, exp) => sum + Number(exp.amount),
+            0
+        );
+
+        return {
+            name: category.category_name,
+            allocated: Number(category.allocated || 0), // ← مهم
+            spent: totalSpent
+        };
+    }).filter(item => item.allocated > 0 || item.spent > 0);
+    const topCategories = [...expenseChartData]
+        .sort((a, b) => b.spent - a.spent)
+        .slice(0, 5);
+
+
+
+    // Filter documents
+    const filteredDocuments = documentsData.filter(doc => {
+        const matchesCategory = documentFilter === "All" || doc.category === documentFilter;
+        const matchesSearch = !documentSearchTerm ||
+            doc.title?.toLowerCase().includes(documentSearchTerm.toLowerCase()) ||
+            doc.description?.toLowerCase().includes(documentSearchTerm.toLowerCase()) ||
+            doc.tags?.toLowerCase().includes(documentSearchTerm.toLowerCase());
+
+        return matchesCategory && matchesSearch;
+    });
+
+    // Get file icon based on type
+    const getFileIcon = (fileName) => {
+        const ext = fileName?.split('.').pop().toLowerCase();
+
+        if (['pdf'].includes(ext)) return <FileText className="w-8 h-8 text-red-500" />;
+        if (['doc', 'docx'].includes(ext)) return <FileText className="w-8 h-8 text-blue-500" />;
+        if (['xls', 'xlsx'].includes(ext)) return <FileSpreadsheet className="w-8 h-8 text-green-500" />;
+        if (['jpg', 'jpeg', 'png', 'gif'].includes(ext)) return <ImageIcon className="w-8 h-8 text-purple-500" />;
+        if (['dwg', 'dxf'].includes(ext)) return <BarChart2 className="w-8 h-8 text-yellow-500" />;
+
+        return <File className="w-8 h-8 text-gray-500" />;
+    };
+
+    // Format file size
+    const formatFileSize = (bytes) => {
+        if (!bytes) return "Unknown";
+        if (bytes < 1024) return bytes + ' B';
+        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+        return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    };
+
+    // Document stats
+    const documentStats = {
+        total: documentsData.length,
+        byCategory: DOCUMENT_CATEGORIES.reduce((acc, cat) => {
+            acc[cat] = documentsData.filter(d => d.category === cat).length;
+            return acc;
+        }, {})
+    };
+
+    const renderGanttChart = () => {
+        const columns = getTimelineColumns();
+        const today = new Date();
+
+        return (
+            <div className="space-y-6">
+                {/* Header */}
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h2 className="text-2xl font-bold flex items-center gap-2">
+                            <BarChart2 className="w-6 h-6" />
+                            Project Timeline
+                        </h2>
+                        <p className="text-sm text-gray-500 mt-1">
+                            Visual representation of all project tasks
+                        </p>
+                    </div>
+
+                    {/* View Controls */}
+                    <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2 bg-gray-100 rounded-lg p-1">
+                            <button
+                                onClick={() => setGanttView("month")}
+                                className={`px-3 py-1 rounded ${ganttView === "month" ? "bg-white shadow" : ""}`}
+                            >
+                                Month
+                            </button>
+                            <button
+                                onClick={() => setGanttView("quarter")}
+                                className={`px-3 py-1 rounded ${ganttView === "quarter" ? "bg-white shadow" : ""}`}
+                            >
+                                Quarter
+                            </button>
+                            <button
+                                onClick={() => setGanttView("year")}
+                                className={`px-3 py-1 rounded ${ganttView === "year" ? "bg-white shadow" : ""}`}
+                            >
+                                Year
+                            </button>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => navigateTimeline("prev")}
+                                className="p-2 hover:bg-gray-100 rounded"
+                            >
+                                <ChevronLeft className="w-5 h-5" />
+                            </button>
+                            <button
+                                onClick={() => navigateTimeline("next")}
+                                className="p-2 hover:bg-gray-100 rounded"
+                            >
+                                <ChevronRight className="w-5 h-5" />
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Legend */}
+                <div className="flex items-center gap-6 text-sm">
+                    <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 bg-green-500 rounded"></div>
+                        <span>Completed</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 bg-blue-500 rounded"></div>
+                        <span>In Progress</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 bg-gray-400 rounded"></div>
+                        <span>Pending</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 bg-red-500 rounded"></div>
+                        <span>Overdue</span>
+                    </div>
+                </div>
+
+                {/* Gantt Chart */}
+                <div className="bg-white rounded-lg shadow overflow-hidden">
+                    <div className="overflow-x-auto">
+                        <div className="min-w-[1200px]">
+                            {/* Timeline Header */}
+                            <div className="flex border-b bg-gray-50">
+                                <div className="w-64 p-4 font-semibold border-r">Task / System</div>
+                                <div className="flex-1 flex">
+                                    {columns.map((col, i) => (
+                                        <div
+                                            key={i}
+                                            className="flex-1 p-4 text-center font-semibold border-r last:border-r-0"
+                                        >
+                                            {col.label}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Tasks by System */}
+                            {Object.entries(groupedTasks).map(([system, tasks]) => (
+                                <div key={system} className="border-b">
+                                    {/* System Header */}
+                                    <div className="flex bg-gray-100">
+                                        <div className="w-64 p-3 font-semibold border-r flex items-center gap-2">
+                                            <ChevronRight className="w-4 h-4" />
+                                            {system}
+                                            <span className="text-xs text-gray-500 ml-auto">
+                                                ({tasks.length} tasks)
+                                            </span>
+                                        </div>
+                                        <div className="flex-1 relative">
+                                            {/* Today marker */}
+                                            {(() => {
+                                                const style = getTaskBarStyle(
+                                                    { startDate: today, deadlineDate: today },
+                                                    columns
+                                                );
+                                                if (style) {
+                                                    return (
+                                                        <div
+                                                            className="absolute top-0 bottom-0 w-0.5 bg-red-500 z-10"
+                                                            style={{ left: style.left }}
+                                                        >
+                                                            <div className="absolute -top-1 -left-2 w-4 h-4 bg-red-500 rounded-full"></div>
+                                                        </div>
+                                                    );
+                                                }
+                                            })()}
+                                        </div>
+                                    </div>
+
+                                    {/* Task Rows */}
+                                    {tasks.map((task, taskIdx) => {
+                                        const barStyle = getTaskBarStyle(task, columns);
+
+                                        return (
+                                            <div key={taskIdx} className="flex hover:bg-gray-50">
+                                                <div className="w-64 p-3 border-r text-sm">
+                                                    <div className="font-medium truncate">
+                                                        {task.subTask || task.task || `Task ${taskIdx + 1}`}
+                                                    </div>
+                                                    <div className="text-xs text-gray-500 mt-1">
+                                                        {task.assigned_to}
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex-1 relative p-2">
+                                                    {/* Timeline grid */}
+                                                    <div className="absolute inset-0 flex">
+                                                        {columns.map((_, i) => (
+                                                            <div
+                                                                key={i}
+                                                                className="flex-1 border-r last:border-r-0"
+                                                            ></div>
+                                                        ))}
+                                                    </div>
+
+                                                    {/* Task bar */}
+                                                    {barStyle && (
+                                                        <div
+                                                            className={`absolute top-2 bottom-2 rounded cursor-pointer hover:opacity-80 transition-opacity ${getTaskColor(task)}`}
+                                                            style={barStyle}
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setSelectedTask(task);
+                                                                setShowTaskDetails(true);
+                                                            }}
+                                                            title={`${task.subTask || task.task}\n${task.status}\n${new Date(task.startDate).toLocaleDateString()} - ${new Date(task.deadlineDate).toLocaleDateString()}`}
+                                                        >
+                                                            <div className="px-2 py-1 text-white text-xs font-medium truncate">
+                                                                {task.progress}%
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            ))}
+
+                            {/* Empty state */}
+                            {Object.keys(groupedTasks).length === 0 && (
+                                <div className="p-12 text-center text-gray-500">
+                                    <Calendar className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                                    <p>No tasks with dates available</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Stats */}
+                <div className="grid grid-cols-4 gap-4">
+                    <div className="bg-white p-4 rounded-lg shadow">
+                        <div className="text-sm text-gray-600">Total Tasks</div>
+                        <div className="text-2xl font-bold mt-1">{tasksData.length}</div>
+                    </div>
+                    <div className="bg-white p-4 rounded-lg shadow">
+                        <div className="text-sm text-gray-600">Completed</div>
+                        <div className="text-2xl font-bold mt-1 text-green-600">
+                            {tasksData.filter(t => t.status === "Completed").length}
+                        </div>
+                    </div>
+                    <div className="bg-white p-4 rounded-lg shadow">
+                        <div className="text-sm text-gray-600">In Progress</div>
+                        <div className="text-2xl font-bold mt-1 text-blue-600">
+                            {tasksData.filter(t => t.status === "In Progress").length}
+                        </div>
+                    </div>
+                    <div className="bg-white p-4 rounded-lg shadow">
+                        <div className="text-sm text-gray-600">Overdue</div>
+                        <div className="text-2xl font-bold mt-1 text-red-600">
+                            {tasksData.filter(t =>
+                                t.status !== "Completed" &&
+                                new Date(t.deadlineDate) < new Date()
+                            ).length}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+
+    };
+    //==================RENDER: Budget View
+
+    const renderBudget = () => {
+        // Calculate totals
+        const totalAllocated = budgetCategories.reduce((sum, cat) => sum + cat.allocated, 0);
+        const totalSpent = budgetCategories.reduce((sum, cat) => sum + getCategorySpent(cat.category_id), 0);
+        const totalRemaining = totalAllocated - totalSpent;
+
+        return (
+            <div className="space-y-6">
+                {/* Header */}
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h2 className="text-2xl font-bold flex items-center gap-2">
+                            <DollarSign className="w-6 h-6" />
+                            Budget Management
+                        </h2>
+                        <p className="text-sm text-gray-500 mt-1">
+                            Track budget allocations and expenses
+                        </p>
+                    </div>
+
+                    {hasPermission("all") && (
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setShowAddCategoryModal(true)}
+                                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                            >
+                                <Plus className="w-4 h-4" />
+                                Add Budget Category
+                            </button>
+                            <button
+                                onClick={() => setShowAddExpenseModal(true)}
+                                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                            >
+                                <Plus className="w-4 h-4" />
+                                Add Expense
+                            </button>
+                        </div>
+                    )}
+                </div>
+
+                {/* Summary Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="bg-white p-6 rounded-lg shadow">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm text-gray-600">Total Budget</p>
+                                <p className="text-2xl font-bold text-gray-900 mt-1">
+                                    {formatCurrency(totalAllocated)}
+                                </p>
+                            </div>
+                            <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                                <Target className="w-6 h-6 text-blue-600" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="bg-white p-6 rounded-lg shadow">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm text-gray-600">Total Spent</p>
+                                <p className="text-2xl font-bold text-orange-600 mt-1">
+                                    {formatCurrency(totalSpent)}
+                                </p>
+                            </div>
+                            <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
+                                <TrendingUp className="w-6 h-6 text-orange-600" />
+                            </div>
+                        </div>
+                        <div className="mt-2">
+                            <div className="flex items-center gap-2 text-sm text-gray-600">
+                                <span>{((totalSpent / totalAllocated) * 100).toFixed(1)}% of budget</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="bg-white p-6 rounded-lg shadow">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm text-gray-600">Remaining</p>
+                                <p className={`text-2xl font-bold mt-1 ${totalRemaining >= 0 ? 'text-green-600' : 'text-red-600'
+                                    }`}>
+                                    {formatCurrency(totalRemaining)}
+                                </p>
+                            </div>
+                            <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${totalRemaining >= 0 ? 'bg-green-100' : 'bg-red-100'
+                                }`}>
+                                <Wallet className={`w-6 h-6 ${totalRemaining >= 0 ? 'text-green-600' : 'text-red-600'
+                                    }`} />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Budget Categories with Expenses */}
+                <div className="bg-white rounded-lg shadow overflow-hidden">
+                    <div className="overflow-x-auto">
+                        <table className="w-full">
+                            <thead className="bg-gray-50 border-b">
+                                <tr>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                        Category
+                                    </th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                        Allocated
+                                    </th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                        Spent
+                                    </th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                        Remaining
+                                    </th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                        Status
+                                    </th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                        Actions
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-200">
+                                {budgetCategories.map((category) => {
+                                    const spent = getCategorySpent(category.category_id);
+                                    const remaining = category.allocated - spent;
+                                    const percentage = (spent / category.allocated) * 100;
+                                    const expenses = getCategoryExpenses(category.category_id);
+                                    const isExpanded = expandedCategory === category.category_id;
+
+                                    return (
+                                        <React.Fragment key={category.category_id}>
+                                            {/* Category Row */}
+                                            <tr className="hover:bg-gray-50">
+                                                <td className="px-6 py-4">
+                                                    <div className="flex items-center gap-2">
+                                                        <button
+                                                            onClick={() => setExpandedCategory(
+                                                                isExpanded ? null : category.category_id
+                                                            )}
+                                                            className="text-gray-400 hover:text-gray-600"
+                                                        >
+                                                            {isExpanded ? (
+                                                                <ChevronDown className="w-5 h-5" />
+                                                            ) : (
+                                                                <ChevronRight className="w-5 h-5" />
+                                                            )}
+                                                        </button>
+                                                        <div>
+                                                            <div className="font-semibold text-gray-900">
+                                                                {category.category_name}
+                                                            </div>
+                                                            {expenses.length > 0 && (
+                                                                <div className="text-xs text-gray-500">
+                                                                    {expenses.length} expense{expenses.length !== 1 ? 's' : ''}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 text-sm font-medium">
+                                                    {formatCurrency(category.allocated)}
+                                                </td>
+                                                <td className="px-6 py-4 text-sm text-orange-600 font-medium">
+                                                    {formatCurrency(spent)}
+                                                </td>
+                                                <td className="px-6 py-4 text-sm font-medium">
+                                                    <span className={remaining >= 0 ? 'text-green-600' : 'text-red-600'}>
+                                                        {formatCurrency(remaining)}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="space-y-1">
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="flex-1 bg-gray-200 rounded-full h-2">
+                                                                <div
+                                                                    className={`h-2 rounded-full ${percentage >= 90 ? 'bg-red-500' :
+                                                                        percentage >= 75 ? 'bg-orange-500' :
+                                                                            'bg-green-500'
+                                                                        }`}
+                                                                    style={{ width: `${Math.min(percentage, 100)}%` }}
+                                                                ></div>
+                                                            </div>
+                                                            <span className="text-xs font-medium text-gray-600">
+                                                                {percentage.toFixed(1)}%
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <button
+                                                        onClick={() => {
+                                                            setSelectedCategory(category);
+                                                            setExpenseForm({
+                                                                ...expenseForm,
+                                                                category_id: category.category_id
+                                                            });
+                                                            setShowAddExpenseModal(true);
+                                                        }}
+                                                        className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                                                    >
+                                                        Add Expense
+                                                    </button>
+                                                </td>
+                                            </tr>
+
+                                            {/* Expenses Rows (Nested) */}
+                                            {isExpanded && expenses.map((expense, idx) => (
+                                                <tr key={expense.expense_id} className="bg-gray-50">
+                                                    <td className="px-6 py-3 pl-16">
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                                                            <div className="text-sm">
+                                                                <div className="font-medium text-gray-700">
+                                                                    {expense.description || 'Expense ' + (idx + 1)}
+                                                                </div>
+                                                                <div className="text-xs text-gray-500">
+                                                                    {expense.invoice_no && `Invoice: ${expense.invoice_no} • `}
+                                                                    {new Date(expense.expense_date).toLocaleDateString()}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-3 text-sm text-gray-600">
+                                                        <div className="text-xs text-gray-500">Recipient:</div>
+                                                        <div className="font-medium">{expense.recipient}</div>
+                                                    </td>
+                                                    <td className="px-6 py-3 text-sm font-medium text-orange-600">
+                                                        {formatCurrency(expense.amount)}
+                                                    </td>
+                                                    <td className="px-6 py-3 text-sm text-gray-500">
+                                                        -
+                                                    </td>
+                                                    <td className="px-6 py-3">
+                                                        <span className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded">
+                                                            Paid
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-6 py-3">
+                                                        {expense.attachment_url ? (
+                                                            <button
+                                                                onClick={() => window.open(expense.attachment_url, '_blank')}
+                                                                className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800"
+                                                            >
+                                                                <Eye className="w-4 h-4" />
+                                                                View
+                                                            </button>
+                                                        ) : (
+                                                            <span className="text-xs text-gray-400">No attachment</span>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </React.Fragment>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {/* Empty State */}
+                    {budgetCategories.length === 0 && (
+                        <div className="p-12 text-center">
+                            <DollarSign className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+                            <h3 className="text-lg font-semibold mb-2">No budget categories yet</h3>
+                            <p className="text-gray-600 mb-4">
+                                Start by adding your first budget category
+                            </p>
+                            {hasPermission("all") && (
+                                <button
+                                    onClick={() => setShowAddCategoryModal(true)}
+                                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                                >
+                                    Add Budget Category
+                                </button>
+                            )}
+                        </div>
+                    )}
+                </div>
+
+                {/* Add Category Modal */}
+                {showAddCategoryModal && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                        <div className="bg-white rounded-lg p-6 w-full max-w-md">
+                            <h3 className="text-xl font-bold mb-4">Add Budget Category</h3>
+
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium mb-2">Category Name *</label>
+                                    <input
+                                        type="text"
+                                        placeholder="e.g., Materials, Labor, Equipment"
+                                        value={categoryForm.category_name}
+                                        onChange={(e) => setCategoryForm({ ...categoryForm, category_name: e.target.value })}
+                                        className="w-full px-3 py-2 border rounded-lg"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium mb-2">Allocated Amount (SAR) *</label>
+                                    <input
+                                        type="number"
+                                        placeholder="0.00"
+                                        value={categoryForm.allocated}
+                                        onChange={(e) => setCategoryForm({ ...categoryForm, allocated: e.target.value })}
+                                        className="w-full px-3 py-2 border rounded-lg"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium mb-2">Notes</label>
+                                    <textarea
+                                        placeholder="Additional notes..."
+                                        value={categoryForm.notes}
+                                        onChange={(e) => setCategoryForm({ ...categoryForm, notes: e.target.value })}
+                                        className="w-full px-3 py-2 border rounded-lg"
+                                        rows="3"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="flex gap-3 mt-6">
+                                <button
+                                    onClick={() => setShowAddCategoryModal(false)}
+                                    className="flex-1 px-4 py-2 border rounded-lg hover:bg-gray-50"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={addBudgetCategory}
+                                    disabled={uploadingCategory}
+                                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                >
+                                    {uploadingCategory ? (
+                                        <>
+                                            <RefreshCw className="w-4 h-4 animate-spin" />
+                                            Adding...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Plus className="w-4 h-4" />
+                                            Add Category
+                                        </>
+                                    )}
+                                </button>
+
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Add Expense Modal */}
+                {showAddExpenseModal && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                        <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                            <h3 className="text-xl font-bold mb-4">Add Expense</h3>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="col-span-2">
+                                    <label className="block text-sm font-medium mb-2">Budget Category *</label>
+                                    <select
+                                        value={expenseForm.category_id}
+                                        onChange={(e) => setExpenseForm({ ...expenseForm, category_id: e.target.value })}
+                                        className="w-full px-3 py-2 border rounded-lg"
+                                    >
+                                        <option value="">Select category</option>
+                                        {budgetCategories.map(cat => (
+                                            <option key={cat.category_id} value={cat.category_id}>
+                                                {cat.category_name} - Remaining: {formatCurrency(getCategoryRemaining(cat))}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium mb-2">Amount (SAR) *</label>
+                                    <input
+                                        type="number"
+                                        placeholder="0.00"
+                                        value={expenseForm.amount}
+                                        onChange={(e) => setExpenseForm({ ...expenseForm, amount: e.target.value })}
+                                        className="w-full px-3 py-2 border rounded-lg"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium mb-2">Recipient *</label>
+                                    <input
+                                        type="text"
+                                        placeholder="Person/Company name"
+                                        value={expenseForm.recipient}
+                                        onChange={(e) => setExpenseForm({ ...expenseForm, recipient: e.target.value })}
+                                        className="w-full px-3 py-2 border rounded-lg"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium mb-2">Invoice Number</label>
+                                    <input
+                                        type="text"
+                                        placeholder="INV-001"
+                                        value={expenseForm.invoice_no}
+                                        onChange={(e) => setExpenseForm({ ...expenseForm, invoice_no: e.target.value })}
+                                        className="w-full px-3 py-2 border rounded-lg"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium mb-2">Expense Date *</label>
+                                    <input
+                                        type="date"
+                                        value={expenseForm.expense_date}
+                                        onChange={(e) => setExpenseForm({ ...expenseForm, expense_date: e.target.value })}
+                                        className="w-full px-3 py-2 border rounded-lg"
+                                    />
+                                </div>
+
+                                <div className="col-span-2">
+                                    <label className="block text-sm font-medium mb-2">Description</label>
+                                    <textarea
+                                        placeholder="What was this expense for?"
+                                        value={expenseForm.description}
+                                        onChange={(e) => setExpenseForm({ ...expenseForm, description: e.target.value })}
+                                        className="w-full px-3 py-2 border rounded-lg"
+                                        rows="2"
+                                    />
+                                </div>
+
+                                <div className="col-span-2">
+                                    <label className="block text-sm font-medium mb-2">
+                                        Attachment (Invoice/Receipt)
+                                    </label>
+                                    <input
+                                        type="file"
+                                        accept="image/*,application/pdf"
+                                        onChange={(e) => setExpenseForm({ ...expenseForm, attachment: e.target.files[0] })}
+                                        className="w-full px-3 py-2 border rounded-lg"
+                                    />
+                                    {expenseForm.attachment && (
+                                        <p className="text-sm text-gray-600 mt-1">
+                                            Selected: {expenseForm.attachment.name}
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="flex gap-3 mt-6">
+                                <button
+                                    onClick={() => {
+                                        setShowAddExpenseModal(false);
+                                        setExpenseForm({
+                                            category_id: '',
+                                            amount: '',
+                                            recipient: '',
+                                            invoice_no: '',
+                                            expense_date: new Date().toISOString().split('T')[0],
+                                            description: '',
+                                            attachment: null
+                                        });
+                                    }}
+                                    className="flex-1 px-4 py-2 border rounded-lg hover:bg-gray-50"
+                                >
+                                    Cancel
+                                </button>
+                                {/* في Add Expense Modal - استبدل الـ Submit button */}
+
+                                <button
+                                    onClick={addBudgetExpense}
+                                    disabled={uploadingExpense}
+                                    className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                >
+                                    {uploadingExpense ? (
+                                        <>
+                                            <RefreshCw className="w-4 h-4 animate-spin" />
+                                            Uploading...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Plus className="w-4 h-4" />
+                                            Add Expense
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
+        );
+    };
+
+
+    // ========== RENDER: DOCUMENTATION VIEW ==========
+
+    const renderDocumentation = () => {
+        return (
+            <div className="space-y-6">
+                {/* Header */}
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h2 className="text-2xl font-bold flex items-center gap-2">
+                            <Folder className="w-6 h-6" />
+                            Document Management
+                        </h2>
+                        <p className="text-sm text-gray-500 mt-1">
+                            Store and manage all project documents
+                        </p>
+                    </div>
+
+                    {hasPermission("all") && (
+                        <button
+                            onClick={() => setShowUploadModal(true)}
+                            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                        >
+                            <Upload className="w-4 h-4" />
+                            Upload Document
+                        </button>
+                    )}
+                </div>
+
+                {/* Stats Cards */}
+                <div className="grid grid-cols-4 gap-4">
+                    <div className="bg-white p-4 rounded-lg shadow">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <div className="text-sm text-gray-600">Total Documents</div>
+                                <div className="text-2xl font-bold mt-1">{documentStats.total}</div>
+                            </div>
+                            <FileText className="w-8 h-8 text-blue-500 opacity-50" />
+                        </div>
+                    </div>
+
+                    <div className="bg-white p-4 rounded-lg shadow">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <div className="text-sm text-gray-600">Contracts</div>
+                                <div className="text-2xl font-bold mt-1">{documentStats.byCategory.Contract || 0}</div>
+                            </div>
+                            <FileText className="w-8 h-8 text-green-500 opacity-50" />
+                        </div>
+                    </div>
+
+                    <div className="bg-white p-4 rounded-lg shadow">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <div className="text-sm text-gray-600">Drawings</div>
+                                <div className="text-2xl font-bold mt-1">{documentStats.byCategory.Drawing || 0}</div>
+                            </div>
+                            <BarChart2 className="w-8 h-8 text-yellow-500 opacity-50" />
+                        </div>
+                    </div>
+
+                    <div className="bg-white p-4 rounded-lg shadow">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <div className="text-sm text-gray-600">Reports</div>
+                                <div className="text-2xl font-bold mt-1">{documentStats.byCategory["Test Report"] || 0}</div>
+                            </div>
+                            <FileSpreadsheet className="w-8 h-8 text-purple-500 opacity-50" />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Filters & Search */}
+                <div className="bg-white p-4 rounded-lg shadow">
+                    <div className="flex items-center gap-4">
+                        {/* Category Filter */}
+                        <div className="flex-1">
+                            <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
+                                <Filter className="w-4 h-4" />
+                                Category
+                            </div>
+                            <select
+                                value={documentFilter}
+                                onChange={(e) => setDocumentFilter(e.target.value)}
+                                className="w-full px-3 py-2 border rounded-lg"
+                            >
+                                <option value="All">All Categories</option>
+                                {DOCUMENT_CATEGORIES.map(cat => (
+                                    <option key={cat} value={cat}>{cat}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        {/* Search */}
+                        <div className="flex-1">
+                            <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
+                                <Search className="w-4 h-4" />
+                                Search
+                            </div>
+                            <input
+                                type="text"
+                                placeholder="Search documents..."
+                                value={documentSearchTerm}
+                                onChange={(e) => setDocumentSearchTerm(e.target.value)}
+                                className="w-full px-3 py-2 border rounded-lg"
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Documents Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {filteredDocuments.map((doc, idx) => (
+                        <div key={idx} className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow">
+                            <div className="p-4">
+                                {/* Icon & Category */}
+                                <div className="flex items-start justify-between mb-3">
+                                    {getFileIcon(doc.fileName)}
+                                    <span className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded">
+                                        {doc.category}
+                                    </span>
+                                </div>
+
+                                {/* Title */}
+                                <h3 className="font-semibold text-lg mb-2 truncate">
+                                    {doc.title}
+                                </h3>
+
+                                {/* Description */}
+                                {doc.description && (
+                                    <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+                                        {doc.description}
+                                    </p>
+                                )}
+
+                                {/* Meta info */}
+                                <div className="space-y-1 text-xs text-gray-500 mb-3">
+                                    <div>File: {doc.fileName}</div>
+                                    <div>Size: {formatFileSize(doc.fileSize)}</div>
+                                    <div>Uploaded: {new Date(doc.timestamp).toLocaleDateString()}</div>
+                                    <div>By: {doc.uploadedBy}</div>
+                                </div>
+
+                                {/* Tags */}
+                                {doc.tags && (
+                                    <div className="flex flex-wrap gap-1 mb-3">
+                                        {doc.tags.split(',').map((tag, i) => (
+                                            <span key={i} className="text-xs px-2 py-0.5 bg-gray-100 rounded">
+                                                {tag.trim()}
+                                            </span>
+                                        ))}
+                                    </div>
+                                )}
+
+                                {/* Actions */}
+                                <div className="flex items-center gap-2 pt-3 border-t">
+                                    <button
+                                        onClick={() => window.open(doc.fileUrl, '_blank')}
+                                        className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-blue-50 text-blue-600 rounded hover:bg-blue-100"
+                                    >
+                                        <Eye className="w-4 h-4" />
+                                        View
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            const link = document.createElement('a');
+                                            link.href = doc.fileUrl;
+                                            link.download = doc.fileName;
+                                            link.click();
+                                        }}
+                                        className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-green-50 text-green-600 rounded hover:bg-green-100"
+                                    >
+                                        <Download className="w-4 h-4" />
+                                        Download
+                                    </button>
+                                    {hasPermission("all") && (
+                                        <button onClick={() => deleteDocument(doc.fileId)}>
+                                            <Trash2 className="w-4 h-4" />
+                                        </button>
+
+                                    )}
+
+
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
+                {/* Empty State */}
+                {filteredDocuments.length === 0 && (
+                    <div className="bg-white rounded-lg shadow p-12 text-center">
+                        <Folder className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+                        <h3 className="text-lg font-semibold mb-2">No documents found</h3>
+                        <p className="text-gray-600 mb-4">
+                            {documentSearchTerm || documentFilter !== "All"
+                                ? "Try adjusting your filters"
+                                : "Upload your first document to get started"}
+                        </p>
+                        {hasPermission("all") && (
+                            <button
+                                onClick={() => setShowUploadModal(true)}
+                                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                            >
+                                Upload Document
+                            </button>
+                        )}
+                    </div>
+                )}
+
+                {/* Upload Modal */}
+                {showUploadModal && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                        <div className="bg-white rounded-lg p-6 w-full max-w-md">
+                            <h3 className="text-xl font-bold mb-4">Upload Document</h3>
+
+                            <div className="space-y-4">
+                                {/* File */}
+                                <div>
+                                    <label className="block text-sm font-medium mb-2">File *</label>
+                                    <input
+                                        type="file"
+                                        onChange={(e) => setUploadForm({ ...uploadForm, file: e.target.files[0] })}
+                                        className="w-full px-3 py-2 border rounded-lg"
+                                    />
+                                </div>
+
+                                {/* Category */}
+                                <div>
+                                    <label className="block text-sm font-medium mb-2">Category *</label>
+                                    <select
+                                        value={uploadForm.category}
+                                        onChange={(e) => setUploadForm({ ...uploadForm, category: e.target.value })}
+                                        className="w-full px-3 py-2 border rounded-lg"
+                                    >
+                                        {DOCUMENT_CATEGORIES.map(cat => (
+                                            <option key={cat} value={cat}>{cat}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                {/* Title */}
+                                <div>
+                                    <label className="block text-sm font-medium mb-2">Title *</label>
+                                    <input
+                                        type="text"
+                                        placeholder="Document title"
+                                        value={uploadForm.title}
+                                        onChange={(e) => setUploadForm({ ...uploadForm, title: e.target.value })}
+                                        className="w-full px-3 py-2 border rounded-lg"
+                                    />
+                                </div>
+
+                                {/* Description */}
+                                <div>
+                                    <label className="block text-sm font-medium mb-2">Description</label>
+                                    <textarea
+                                        placeholder="Brief description..."
+                                        value={uploadForm.description}
+                                        onChange={(e) => setUploadForm({ ...uploadForm, description: e.target.value })}
+                                        className="w-full px-3 py-2 border rounded-lg"
+                                        rows="3"
+                                    />
+                                </div>
+
+                                {/* Tags */}
+                                <div>
+                                    <label className="block text-sm font-medium mb-2">Tags (comma-separated)</label>
+                                    <input
+                                        type="text"
+                                        placeholder="tag1, tag2, tag3"
+                                        value={uploadForm.tags}
+                                        onChange={(e) => setUploadForm({ ...uploadForm, tags: e.target.value })}
+                                        className="w-full px-3 py-2 border rounded-lg"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Actions */}
+                            <div className="flex gap-3 mt-6">
+                                <button
+                                    onClick={() => setShowUploadModal(false)}
+                                    className="flex-1 px-4 py-2 border rounded-lg hover:bg-gray-50"
+                                    disabled={uploadingDocument}
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={uploadDocument}
+                                    disabled={uploadingDocument}
+                                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                                >
+                                    {uploadingDocument ? "Uploading..." : "Upload"}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+
+            </div>
+        );
+    };
 
     // Forms
     const [newComment, setNewComment] = useState("");
@@ -264,9 +1747,9 @@ export default function App() {
         };
     }, []);
 
-    useEffect(() => {
-        emailjs.init(process.env.REACT_APP_EMAILJS_PUBLIC_KEY);
-    }, []);
+    //useEffect(() => {
+    /// emailjs.init(process.env.REACT_APP_EMAILJS_PUBLIC_KEY);
+    // }, []);
 
     useEffect(() => {
         if (budgetData.length || tasksData.length || invoicesData.length) {
@@ -305,6 +1788,18 @@ export default function App() {
             };
 
             await Promise.all([
+                fetch1(GOOGLE_SHEETS.budgetCategories, setBudgetCategories, data => data.map(d => ({
+                    ...d,
+                    allocated: Number(d.allocated) || 0
+
+
+
+                }))),
+                fetch1(GOOGLE_SHEETS.budgetExpenses, setBudgetExpenses, data => data.map(d => ({
+                    ...d,
+                    amount: Number(d.amount) || 0
+                }))),
+                fetch1(GOOGLE_SHEETS.documents, setDocumentsData),
                 fetch1(GOOGLE_SHEETS.tasks, setTasksData),
                 fetch1(GOOGLE_SHEETS.team, setTeamData),
                 fetch1(GOOGLE_SHEETS.budget, setBudgetData, data => data.map(d => ({
@@ -1014,8 +2509,8 @@ Project: ${PROJECT.name}
         inProgress: tasksData.filter(t => t.status === "In Progress").length,
         pending: tasksData.filter(t => t.status === "Pending" || t.status === "Not Started").length,
         avgProgress: tasksData.length ? Math.round((tasksData.filter(t => t.status === "Completed").length / tasksData.length) * 100) : 0,
-        totalBudget: budgetData.reduce((s, c) => s + c.allocated, 0),
-        totalSpent: budgetData.reduce((s, c) => s + c.spent, 0),
+        totalBudget: budgetCategories.reduce((sum, cat) => sum + cat.allocated, 0),
+        totalSpent: budgetCategories.reduce((sum, cat) => sum + getCategorySpent(cat.category_id), 0),
         daysLeft: Math.ceil((PROJECT.end - new Date()) / 86400000),
         invoicesTotal: invoicesData.reduce((s, i) => s + (Number(i.amount) || 0), 0),
         invoicesPaid: invoicesData.filter(i => i.status === "Paid").length,
@@ -1025,6 +2520,8 @@ Project: ${PROJECT.name}
         totalInvoiced: clientAccountData.filter(t => t.type === "invoice").reduce((s, t) => s + Number(t.debit || 0), 0),
 
         totalReceived: clientAccountData.filter(t => t.type === "payment").reduce((s, t) => s + Number(t.credit || 0), 0),
+
+
 
     };
 
@@ -1068,68 +2565,287 @@ Project: ${PROJECT.name}
         </div>
     );
 
-    // ========== LOGIN SCREEN ==========
     if (!isLoggedIn) {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-blue-600 to-purple-700 flex items-center justify-center p-4">
-                <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
-                    <div className="text-center mb-8">
-                        <div className="w-20 h-20 bg-gradient-to-br from-blue-600 to-purple-600 rounded-full mx-auto mb-4 flex items-center justify-center">
-                            <Shield className="text-white" size={40} />
-                        </div>
-                        <h1 className="text-3xl font-bold text-gray-800 mb-2">Project Dashboard</h1>
-                        <p className="text-gray-600 text-sm">{PROJECT.name}</p>
+            <div className="min-h-screen relative overflow-hidden">
+                {/* Background Image with Overlay */}
+                <div
+                    className="absolute inset-0 z-0"
+                    style={{
+                        backgroundImage: `url(${process.env.REACT_APP_PROJECT_BG_IMAGE || 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=1920'})`,
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center',
+                        backgroundRepeat: 'no-repeat'
+                    }}
+                >
+                    {/* Dark Overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-br from-blue-900/90 via-gray-900/85 to-black/90"></div>
+
+                    {/* Animated Particles */}
+                    <div className="absolute inset-0">
+                        {[...Array(20)].map((_, i) => (
+                            <div
+                                key={i}
+                                className="absolute w-2 h-2 bg-white/20 rounded-full"
+                                style={{
+                                    left: `${Math.random() * 100}%`,
+                                    top: `${Math.random() * 100}%`,
+                                    animation: `float ${5 + Math.random() * 10}s linear infinite`,
+                                    animationDelay: `${Math.random() * 5}s`
+                                }}
+                            ></div>
+                        ))}
                     </div>
-                    <div className="space-y-4">
-                        <div>
-                            <label className="block text-sm font-medium mb-2 text-gray-700">Username</label>
-                            <input
-                                type="text"
-                                value={loginForm.username}
-                                onChange={(e) => setLoginForm({ ...loginForm, username: e.target.value })}
-                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                                placeholder="Enter username"
-                                autoComplete="username"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium mb-2 text-gray-700">Password</label>
-                            <input
-                                type="password"
-                                value={loginForm.password}
-                                onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
-                                onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
-                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                                placeholder="Enter password"
-                                autoComplete="current-password"
-                            />
-                        </div>
-                        {loginError && (
-                            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-center gap-2">
-                                <AlertCircle size={20} />
-                                <span className="text-sm">{loginError}</span>
+                </div>
+
+                {/* Content */}
+                <div className="relative z-10 min-h-screen flex">
+                    {/* Left Side - Project Info (Desktop Only) */}
+                    <div className="hidden lg:flex lg:w-1/2 flex-col justify-center items-center p-12 text-white">
+                        {/* Company Logo */}
+                        <div className="mb-8" style={{ animation: 'fadeIn 0.8s ease-out forwards' }}>
+                            <div className="w-32 h-32 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center border border-white/20 shadow-2xl">
+                                {process.env.REACT_APP_COMPANY_LOGO ? (
+                                    <img
+                                        src={process.env.REACT_APP_COMPANY_LOGO}
+                                        alt="Company Logo"
+                                        className="w-24 h-24 object-contain"
+                                    />
+                                ) : (
+                                    <Briefcase className="w-16 h-16 text-white" />
+                                )}
                             </div>
-                        )}
-                        <button
-                            onClick={handleLogin}
-                            className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 rounded-lg font-semibold hover:shadow-lg transform hover:scale-[1.02] transition-all"
-                        >
-                            Login
-                        </button>
+                        </div>
+
+                        {/* Project Info */}
+                        <div className="text-center space-y-6 max-w-lg" style={{ animation: 'slideUp 0.6s ease-out forwards' }}>
+                            <h1 className="text-5xl font-bold mb-4 bg-gradient-to-r from-white to-blue-200 bg-clip-text text-transparent">
+                                SEC-EOA Ph#3 Project- Jubail North & Jubail Residential Substations
+                            </h1>
+                            <p className="text-2xl text-blue-200 font-light">
+                                Low Current Systems
+                            </p>
+
+                            <div className="h-1 w-24 bg-gradient-to-r from-blue-400 to-purple-500 mx-auto rounded-full"></div>
+
+                            {/* Project Details */}
+                            <div className="space-y-4 text-left bg-white/5 backdrop-blur-md rounded-2xl p-6 border border-white/10">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center">
+                                        <Briefcase className="w-5 h-5 text-blue-300" />
+                                    </div>
+                                    <div>
+                                        <div className="text-xs text-gray-400">Client</div>
+                                        <div className="font-semibold">{PROJECT.client}</div>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-purple-500/20 rounded-lg flex items-center justify-center">
+                                        <FileText className="w-5 h-5 text-purple-300" />
+                                    </div>
+                                    <div>
+                                        <div className="text-xs text-gray-400">Contract</div>
+                                        <div className="font-semibold text-sm">{PROJECT.contract}</div>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-green-500/20 rounded-lg flex items-center justify-center">
+                                        <DollarSign className="w-5 h-5 text-green-300" />
+                                    </div>
+                                    <div>
+                                        <div className="text-xs text-gray-400">Contract Value</div>
+                                        <div className="font-semibold">
+                                            SAR {PROJECT.totalValue.toLocaleString()}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-orange-500/20 rounded-lg flex items-center justify-center">
+                                        <Calendar className="w-5 h-5 text-orange-300" />
+                                    </div>
+                                    <div>
+                                        <div className="text-xs text-gray-400">Completion Date</div>
+                                        <div className="font-semibold">
+                                            {PROJECT.end.toLocaleDateString('en-US', {
+                                                month: 'long',
+                                                year: 'numeric'
+                                            })}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Features Badges */}
+                            <div className="flex flex-wrap gap-2 justify-center mt-6">
+                                {['Real-time Tracking', 'Budget Control', 'Team Collaboration', 'Analytics'].map((feature, i) => (
+                                    <span
+                                        key={i}
+                                        className="px-3 py-1 bg-white/10 backdrop-blur-sm rounded-full text-xs border border-white/20"
+                                        style={{
+                                            animation: 'fadeIn 0.8s ease-out forwards',
+                                            animationDelay: `${i * 0.1}s`,
+                                            opacity: 0
+                                        }}
+                                    >
+                                        {feature}
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
                     </div>
-                    <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-                        <p className="text-sm text-gray-600 font-semibold mb-2"></p>
-                        <div className="space-y-1 text-xs text-gray-700">
-                            <p> <span className="font-mono bg-white px-2 py-0.5 rounded"></span></p>
-                            <p><span className="font-mono bg-white px-2 py-0.5 rounded"></span></p>
-                            <p><span className="font-mono bg-white px-2 py-0.5 rounded"></span></p>
+
+                    {/* Right Side - Login Form */}
+                    <div className="w-full lg:w-1/2 flex items-center justify-center p-8">
+                        <div className="w-full max-w-md">
+                            {/* Mobile Logo */}
+                            <div className="lg:hidden text-center mb-8" style={{ animation: 'fadeIn 0.8s ease-out forwards' }}>
+                                <div className="w-20 h-20 bg-white/10 backdrop-blur-md rounded-xl mx-auto mb-4 flex items-center justify-center border border-white/20">
+                                    {process.env.REACT_APP_COMPANY_LOGO ? (
+                                        <img
+                                            src={process.env.REACT_APP_COMPANY_LOGO}
+                                            alt="Logo"
+                                            className="w-16 h-16 object-contain"
+                                        />
+                                    ) : (
+                                        <Briefcase className="w-12 h-12 text-white" />
+                                    )}
+                                </div>
+                                <h2 className="text-2xl font-bold text-white mb-2">
+                                    Project Dashboard
+                                </h2>
+                                <p className="text-gray-300 text-sm">
+                                    {PROJECT.client}
+                                </p>
+                            </div>
+
+                            {/* Login Card - Glass Morphism */}
+                            <div className="bg-white/10 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/20 p-8" style={{ animation: 'slideUp 0.6s ease-out forwards' }}>
+                                {/* Header */}
+                                <div className="text-center mb-8">
+                                    <h3 className="text-3xl font-bold text-white mb-2">
+                                        Welcome Back
+                                    </h3>
+                                    <p className="text-gray-300">
+                                        Sign in to access your dashboard
+                                    </p>
+                                </div>
+
+                                {/* Error Message */}
+                                {loginError && (
+                                    <div className="mb-6 p-4 bg-red-500/20 backdrop-blur-sm border border-red-500/50 rounded-xl flex items-center gap-3" style={{ animation: 'shake 0.5s ease-in-out' }}>
+                                        <AlertCircle className="w-5 h-5 text-red-300 flex-shrink-0" />
+                                        <p className="text-red-200 text-sm">{loginError}</p>
+                                    </div>
+                                )}
+
+                                {/* Form */}
+                                <form onSubmit={(e) => { e.preventDefault(); handleLogin(); }} className="space-y-6">
+                                    {/* Username */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-200 mb-2">
+                                            Username
+                                        </label>
+                                        <div className="relative">
+                                            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                                <Shield className="w-5 h-5 text-gray-400" />
+                                            </div>
+                                            <input
+                                                type="text"
+                                                value={loginForm.username}
+                                                onChange={(e) => setLoginForm({ ...loginForm, username: e.target.value })}
+                                                className="w-full pl-12 pr-4 py-3 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-transparent transition-all"
+                                                placeholder="Enter your username"
+                                                autoComplete="username"
+                                                required
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Password */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-200 mb-2">
+                                            Password
+                                        </label>
+                                        <div className="relative">
+                                            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                                <Lock className="w-5 h-5 text-gray-400" />
+                                            </div>
+                                            <input
+                                                type="password"
+                                                value={loginForm.password}
+                                                onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
+                                                onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
+                                                className="w-full pl-12 pr-4 py-3 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-transparent transition-all"
+                                                placeholder="Enter your password"
+                                                autoComplete="current-password"
+                                                required
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Login Button */}
+                                    <button
+                                        type="submit"
+                                        className="w-full py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02] flex items-center justify-center gap-2"
+                                    >
+                                        Sign In
+                                        <ChevronRight className="w-5 h-5" />
+                                    </button>
+                                </form>
+
+                                {/* Footer */}
+                                <div className="mt-8 pt-6 border-t border-white/10">
+                                    <p className="text-center text-sm text-gray-400">
+                                        Powered by <span className="text-white font-semibold">Al Rammah</span>
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Quick Access */}
+                            <div className="mt-6 text-center">
+                                <p className="text-gray-300 text-sm mb-3">Quick Access</p>
+                                <div className="flex justify-center gap-3">
+                                    {Object.entries(USERS).map(([key, user]) => (
+                                        <button
+                                            key={key}
+                                            onClick={() => setLoginForm({ username: key, password: '' })}
+                                            className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 hover:bg-white/20 transition-all overflow-hidden"
+                                            title={user.name}
+                                        >
+                                            <img
+                                                src={user.avatar}
+                                                alt={user.name}
+                                                className="w-full h-full object-cover"
+                                            />
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Footer Info */}
+                <div className="absolute bottom-0 left-0 right-0 z-10 p-6">
+                    <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between text-white/60 text-sm gap-4">
+                        <div className="flex items-center gap-2 sm:gap-6">
+                            <span>© 2026 Al Rammah Company</span>
+                            <span className="hidden sm:inline">•</span>
+                            <span>Project Management and Operations Dept.</span>
+                        </div>
+                        <div className="flex items-center gap-4">
+                            <a href="#" className="hover:text-white transition-colors">Privacy</a>
+                            <a href="#" className="hover:text-white transition-colors">Terms</a>
+                            <a href="#" className="hover:text-white transition-colors">Support</a>
                         </div>
                     </div>
                 </div>
             </div>
         );
     }
-
     if (loading) {
         return (
             <div className="min-h-screen bg-gradient-to-br from-blue-600 to-purple-700 flex items-center justify-center">
@@ -1245,7 +2961,7 @@ Project: ${PROJECT.name}
 
                     {/* NAVIGATION */}
                     <div className="flex gap-2 mt-4 overflow-x-auto pb-2">
-                        {["Overview", "Tasks", "Team", "Budget", "Materials", "Photos", "Invoices", "Client Account", "Comments"].map(v => (
+                        {["Overview", "Tasks", "Team", "Materials", "Photos", "Invoices", "Client Account", "Comments", "Timeline", "Documents", "Expenses Management"].map(v => (
                             <button
                                 key={v}
                                 onClick={() => setView(v)}
@@ -1266,6 +2982,7 @@ Project: ${PROJECT.name}
                 {/* OVERVIEW */}
                 {view === "Overview" && (
                     <div className="space-y-6">
+
                         {/* Stats Grid */}
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                             <StatCard
@@ -1339,21 +3056,65 @@ Project: ${PROJECT.name}
                             </div>
                         </div>
 
-                        {/* Budget Overview Chart */}
-                        <div className={`${theme.card} rounded-xl p-6 shadow-lg border ${theme.border}`}>
-                            <h2 className="text-2xl font-bold mb-6">Budget Overview</h2>
-                            <ResponsiveContainer width="100%" height={300}>
-                                <BarChart data={budgetData}>
-                                    <CartesianGrid strokeDasharray="3 3" />
-                                    <XAxis dataKey="name" />
-                                    <YAxis />
-                                    <Tooltip formatter={(value) => formatCurrency(value)} />
-                                    <Legend />
-                                    <Bar dataKey="allocated" fill="#3b82f6" name="Allocated" />
-                                    <Bar dataKey="spent" fill="#8b5cf6" name="Spent" />
-                                </BarChart>
-                            </ResponsiveContainer>
+                        {/* Filters */}
+                        <div className="flex gap-4 mb-6">
+                            <select
+                                value={selectedMonth}
+                                onChange={(e) => setSelectedMonth(e.target.value)}
+                                className="px-3 py-2 border rounded"
+                            >
+                                <option value="all">All Months</option>
+                                {[...Array(12)].map((_, i) => (
+                                    <option key={i} value={i}>
+                                        {new Date(0, i).toLocaleString('default', { month: 'long' })}
+                                    </option>
+                                ))}
+                            </select>
+
+                            <input
+                                type="number"
+                                value={selectedYear}
+                                onChange={(e) => setSelectedYear(e.target.value)}
+                                className="px-3 py-2 border rounded w-32"
+                            />
                         </div>
+
+                        {/* Charts Card */}
+                        <div className={`${theme.card} rounded-xl p-6 shadow-lg border ${theme.border}`}>
+                            <h2 className="text-2xl font-bold mb-6">Expense Overview</h2>
+
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+                                <ResponsiveContainer width="100%" height={300}>
+                                    <BarChart data={expenseChartData}>
+                                        <CartesianGrid strokeDasharray="3 3" />
+                                        <XAxis dataKey="name" />
+                                        <YAxis />
+                                        <Tooltip formatter={(value) => formatCurrency(value)} />
+                                        <Legend />
+                                        <Bar dataKey="allocated" fill="#3b82f6" name="Allocated" />
+                                        <Bar dataKey="spent" fill="#8b5cf6" name="Spent" />
+                                    </BarChart>
+                                </ResponsiveContainer>
+
+
+                                <ResponsiveContainer width="100%" height={300}>
+                                    <PieChart>
+                                        <Pie
+                                            data={expenseChartData}
+                                            dataKey="spent"
+                                            nameKey="name"
+                                            outerRadius={100}
+                                            fill="#3b82f6"
+                                            label
+                                        />
+                                        <Tooltip formatter={(value) => formatCurrency(value)} />
+                                    </PieChart>
+                                </ResponsiveContainer>
+
+                            </div>
+                        </div>
+
                     </div>
                 )}
 
@@ -1411,6 +3172,7 @@ Project: ${PROJECT.name}
                         </div>
                     </div>
                 )}
+
 
 
                 {/* INVOICES */}
@@ -2024,6 +3786,81 @@ Project: ${PROJECT.name}
                     </div>
                 </div>
             )}
+
+            {view === "Timeline" && renderGanttChart()}
+            {view === "Documents" && renderDocumentation()}
+            {view === "Expenses Management" && renderBudget()}
+
+            {/* Task Details Modal */}
+            {showTaskDetails && selectedTask && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-lg p-6 w-full max-w-lg">
+                        <h3 className="text-xl font-bold mb-4">Task Details</h3>
+
+                        <div className="space-y-3">
+                            <div>
+                                <div className="text-sm text-gray-600">Task</div>
+                                <div className="font-semibold">{selectedTask.subTask || selectedTask.task}</div>
+                            </div>
+
+                            <div>
+                                <div className="text-sm text-gray-600">System</div>
+                                <div>{selectedTask.system}</div>
+                            </div>
+
+                            <div>
+                                <div className="text-sm text-gray-600">Status</div>
+                                <div>
+                                    <span className={`px-2 py-1 rounded text-sm ${selectedTask.status === "Completed" ? "bg-green-100 text-green-700" :
+                                        selectedTask.status === "In Progress" ? "bg-blue-100 text-blue-700" :
+                                            "bg-gray-100 text-gray-700"
+                                        }`}>
+                                        {selectedTask.status}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <div className="text-sm text-gray-600">Start Date</div>
+                                    <div>{new Date(selectedTask.startDate).toLocaleDateString()}</div>
+                                </div>
+                                <div>
+                                    <div className="text-sm text-gray-600">End Date</div>
+                                    <div>{new Date(selectedTask.deadlineDate).toLocaleDateString()}</div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <div className="text-sm text-gray-600">Assigned To</div>
+                                <div>{selectedTask.assigned_to}</div>
+                            </div>
+
+                            <div>
+                                <div className="text-sm text-gray-600">Progress</div>
+                                <div className="flex items-center gap-3">
+                                    <div className="flex-1 bg-gray-200 rounded-full h-2">
+                                        <div
+                                            className="bg-blue-600 h-2 rounded-full"
+                                            style={{ width: `${selectedTask.progress || 0}%` }}
+                                        ></div>
+                                    </div>
+                                    <span className="font-semibold">{selectedTask.progress || 0}%</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button
+                            onClick={() => setShowTaskDetails(false)}
+                            className="w-full mt-6 px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200"
+                        >
+                            Close
+                        </button>
+                    </div>
+                </div>
+            )}
+
+
             {/* MATERIALS */}
             {view === "Materials" && (
                 <div className="space-y-6">
