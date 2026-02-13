@@ -1,5 +1,9 @@
+
 import React, { useState, useEffect } from "react";
 import emailjs from '@emailjs/browser';
+import './index.css';
+import { motion, AnimatePresence } from 'framer-motion';
+import CountUp from 'react-countup';
 import {
     BarChart, Bar, PieChart, Pie, Cell, AreaChart, Area, LineChart, Line,
     XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid,
@@ -11,45 +15,95 @@ import {
     ChevronRight, MessageSquare, Award, FileText, Shield, Search, Bell, LogOut, Send,
     MapPin, Phone, Mail, Briefcase, Star, RefreshCw, Upload, Receipt, Wallet,
     Plus, Eye, Edit, Trash2, Package, Image as ImageIcon, CreditCard, X,
-    Check, FileSpreadsheet, TrendingDown as ArrowDown, TrendingUp as ArrowUp, Folder, ChevronLeft, BarChart2, File, Lock, ChevronDown
+    Check, FileSpreadsheet, TrendingDown as ArrowDown, TrendingUp as ArrowUp, Folder, ChevronLeft, BarChart2, File, Lock, ChevronDown,
+    Settings, Zap, Menu, User, EyeOff, ArrowRight
 } from "lucide-react";
 
-// ========== CONFIGURATION ==========
-const GOOGLE_SHEETS = {
-    tasks: process.env.REACT_APP_TASKS_URL,
-    team: process.env.REACT_APP_TEAM_URL,
-    budget: process.env.REACT_APP_BUDGET_URL,
-    materials: process.env.REACT_APP_MATERIALS_URL,
-    performance: process.env.REACT_APP_PERFORMANCE_URL,
-    photos: process.env.REACT_APP_PHOTOS_URL,
-    commentsRead: process.env.REACT_APP_COMMENTS_READ_URL,
-    commentsWrite: process.env.REACT_APP_COMMENTS_WRITE_URL,
-    invoices: process.env.REACT_APP_INVOICES_URL,
-    invoiceAdd: process.env.REACT_APP_INVOICE_ADD_URL,
-    photoUpload: process.env.REACT_APP_PHOTO_UPLOAD_URL,
-    clientAccount: process.env.REACT_APP_CLIENT_ACCOUNT_URL,
-    clientAccountWrite: process.env.REACT_APP_CLIENT_ACCOUNT_WRITE_URL,
-    paymentMilestones: process.env.REACT_APP_PAYMENT_MILESTONES_URL || "",
-    changeOrders: process.env.REACT_APP_CHANGE_ORDERS_URL || "",
-    cashFlow: process.env.REACT_APP_CASH_FLOW_URL || "",
-    documents: process.env.REACT_APP_DOCUMENTS_URL,
-    documentUpload: process.env.REACT_APP_DOCUMENT_UPLOAD_URL,
+/// ========== MULTI-PROJECT CONFIGURATION ==========
+const PROJECTS = {
+    "sec-eoa-jubail": {
+        id: "sec-eoa-jubail",
+        name: "SEC-EOA Ph#3 Project- Jubail North & Jubail Residential Substations",
+        shortName: "SEC-EOA Jubail",
+        client: "Saudi Business Machines",
+        contract: "Ritis 01 24 0953 001 R 05",
+        endDate: new Date(2026, 2, 15),
+        totalValue: 1466974.50,
 
-    //New
-    budgetCategories: process.env.REACT_APP_BUDGET_CATEGORIES_URL,
-    budgetExpenses: process.env.REACT_APP_BUDGET_EXPENSES_URL,
-    budgetCategoryAdd: process.env.REACT_APP_BUDGET_CATEGORY_ADD_URL,
-    budgetExpenseAdd: process.env.REACT_APP_BUDGET_EXPENSE_ADD_URL,
+        sheets: {
+            tasks: process.env.REACT_APP_TASKS_URL,
+            team: process.env.REACT_APP_TEAM_URL,
+            budget: process.env.REACT_APP_BUDGET_URL,
+            materials: process.env.REACT_APP_MATERIALS_URL,
+            performance: process.env.REACT_APP_PERFORMANCE_URL,
+            photos: process.env.REACT_APP_PHOTOS_URL,
+            commentsRead: process.env.REACT_APP_COMMENTS_READ_URL,
+            commentsWrite: process.env.REACT_APP_COMMENTS_WRITE_URL,
+            invoices: process.env.REACT_APP_INVOICES_URL,
+            invoiceAdd: process.env.REACT_APP_INVOICE_ADD_URL,
+            photoUpload: process.env.REACT_APP_PHOTO_UPLOAD_URL,
+            clientAccount: process.env.REACT_APP_CLIENT_ACCOUNT_URL,
+            clientAccountWrite: process.env.REACT_APP_CLIENT_ACCOUNT_WRITE_URL,
+            paymentMilestones: process.env.REACT_APP_PAYMENT_MILESTONES_URL || "",
+            changeOrders: process.env.REACT_APP_CHANGE_ORDERS_URL || "",
+            cashFlow: process.env.REACT_APP_CASH_FLOW_URL || "",
+            documents: process.env.REACT_APP_DOCUMENTS_URL,
+            documentUpload: process.env.REACT_APP_DOCUMENT_UPLOAD_URL,
+            budgetCategories: process.env.REACT_APP_BUDGET_CATEGORIES_URL,
+            budgetExpenses: process.env.REACT_APP_BUDGET_EXPENSES_URL,
+            budgetCategoryAdd: process.env.REACT_APP_BUDGET_CATEGORY_ADD_URL,
+            budgetExpenseAdd: process.env.REACT_APP_BUDGET_EXPENSE_ADD_URL,
+        },
+
+        images: {
+            background: process.env.REACT_APP_PROJECT_BG_IMAGE || '/images/jubail-bg.jpg',
+            logo: process.env.REACT_APP_COMPANY_LOGO || '/images/logo.png'
+        }
+    },
+
+    "kingdom-gate": {
+        id: "kingdom-gate",
+        name: "Kingdom Gate Tower - Low Current Systems",
+        shortName: "Kingdom Gate",
+        client: "Al Fahd Investment - STS",
+        contract: "SO-23_0941_001_R_08",
+        endDate: new Date(2026, 2, 15),
+        totalValue: 1645659,
+
+        sheets: {
+            tasks: process.env.REACT_APP_KG_TASKS_URL,
+            team: process.env.REACT_APP_KG_TEAM_URL,
+            budget: process.env.REACT_APP_KG_BUDGET_URL,
+            materials: process.env.REACT_APP_KG_MATERIALS_URL,
+            performance: process.env.REACT_APP_KG_PERFORMANCE_URL,
+            photos: process.env.REACT_APP_KG_PHOTOS_URL,
+            commentsRead: process.env.REACT_APP_KG_COMMENTS_READ_URL,
+            commentsWrite: process.env.REACT_APP_KG_COMMENTS_WRITE_URL,
+            invoices: process.env.REACT_APP_KG_INVOICES_URL,
+            invoiceAdd: process.env.REACT_APP_KG_INVOICE_ADD_URL,
+            photoUpload: process.env.REACT_APP_KG_PHOTO_UPLOAD_URL,
+            clientAccount: process.env.REACT_APP_KG_CLIENT_ACCOUNT_URL,
+            clientAccountWrite: process.env.REACT_APP_KG_CLIENT_ACCOUNT_WRITE_URL,
+            paymentMilestones: process.env.REACT_APP_KG_PAYMENT_MILESTONES_URL || "",
+            changeOrders: process.env.REACT_APP_KG_CHANGE_ORDERS_URL || "",
+            cashFlow: process.env.REACT_APP_KG_CASH_FLOW_URL || "",
+
+            documents: process.env.REACT_APP_KG_DOCUMENTS_URL,
+            documentUpload: process.env.REACT_APP_KG_DOCUMENT_UPLOAD_URL,
+            budgetCategories: process.env.REACT_APP_KG_BUDGET_CATEGORIES_URL,
+            budgetExpenses: process.env.REACT_APP_KG_BUDGET_EXPENSES_URL,
+            budgetCategoryAdd: process.env.REACT_APP_KG_BUDGET_CATEGORY_ADD_URL,
+            budgetExpenseAdd: process.env.REACT_APP_KG_BUDGET_EXPENSE_ADD_URL,
+        },
+
+        images: {
+            background: process.env.REACT_APP_KG_BG_IMAGE || '/images/kingdom-gate-bg.jpg',
+            logo: process.env.REACT_APP_KG_LOGO || '/images/logo.png'
+        }
+    }
 };
 
-const PROJECT = {
-    name: "SEC-EOA Ph#3 Project- Jubail North & Jubail Residential Substations",
-    client: "Saudi Business Machines ",
-    contract: "Ritis 01 24 0953 001 R 05",
-    // start: new Date(2025, 2, 1),
-    end: new Date(2026, 2, 15),
-    totalValue: 1466974.50
-};
+const DEFAULT_PROJECT = "sec-eoa-jubail";
 // قائمة الفئات الممكنة للمستندات
 const DOCUMENT_CATEGORIES = [
     "Contract", "Drawing", "Permit", "Test Report",
@@ -93,6 +147,20 @@ const USERS = {
     }
 };
 
+// Company Information (add this after USERS constant)
+const COMPANY_INFO = {
+    name: "Al Rammah Trading & Contracting Est.",
+    logo: process.env.REACT_APP_COMPANY_LOGO || '/images/logo.png',
+    tagline: "Excellence in Project Management",
+    address: "Dammam, Eastern Province, Saudi Arabia",
+    phone: "+966 13 XXX XXXX",
+    email: "info@alrammah.com.sa",
+    website: "www.alrammah.com.sa",
+    founded: "2010",
+    projects: "150+",
+    clients: "50+",
+    employees: "200+"
+};
 const PERMISSIONS = {
     ADMIN: ["all"],
     PM: ["all"],
@@ -136,15 +204,21 @@ const generateNotificationId = (type, identifier, date = null) => {
 };
 
 
+
 export default function App() {
     // Auth
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [currentUser, setCurrentUser] = useState(null);
     const [loginForm, setLoginForm] = useState({ username: "", password: "" });
     const [loginError, setLoginError] = useState("");
-
+    const [showPassword, setShowPassword] = useState(false);
 
     // UI
+    const [showUserMenu, setShowUserMenu] = useState(false);
+    const [showMobileMenu, setShowMobileMenu] = useState(false);
+    const [searchQuery, setSearchQuery] = useState("");
+    const [searchFocused, setSearchFocused] = useState(false);
+    const [loginToken, setLoginToken] = useState("");
     const [emailQueue, setEmailQueue] = useState([]);
     const [isProcessingEmails, setIsProcessingEmails] = useState(false);
     const [view, setView] = useState("Overview");
@@ -163,7 +237,17 @@ export default function App() {
     const [uploadingExpense, setUploadingExpense] = useState(false);
     const [selectedMonth, setSelectedMonth] = useState("all");
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+    // ========== PROJECT STATE ==========
+    const [currentProjectId, setCurrentProjectId] = useState(
+        localStorage.getItem('selectedProject') || DEFAULT_PROJECT
+    );
+    const [switchingProject, setSwitchingProject] = useState(false);
 
+    // ========== DYNAMIC PROJECT & SHEETS ==========
+    const PROJECT =
+        PROJECTS[currentProjectId] || PROJECTS[DEFAULT_PROJECT];
+
+    const GOOGLE_SHEETS = PROJECT?.sheets || {};
 
 
     // Data
@@ -186,7 +270,30 @@ export default function App() {
     const [showAddCategoryModal, setShowAddCategoryModal] = useState(false);
     const [showAddExpenseModal, setShowAddExpenseModal] = useState(false);
     const [selectedCategory, setSelectedCategory] = useState(null);
+    const [materials, setMaterials] = useState([]);
 
+
+    // ========== Functions ==========
+
+    // Systems Health
+    const systemsHealth = [...new Set(materials.map(m => m.system))].filter(Boolean).map(system => {
+        const systemMaterials = materials.filter(m => m.system === system);
+        const delivered = systemMaterials.filter(m => m.delivery_status === "Delivered").length;
+        const total = systemMaterials.length;
+        const completion = total > 0 ? Math.round((delivered / total) * 100) : 0;
+        const status = completion === 100 ? "Delivered" : "Pending";
+
+        return {
+            system,
+            completion,
+            status,
+            delivered,
+            total
+        };
+    });
+    const handleProjectChange = (newProjectId) => {
+        setCurrentProjectId(newProjectId);
+    };
     const [categoryForm, setCategoryForm] = useState({
         category_name: '',
         allocated: '',
@@ -2219,6 +2326,118 @@ Project: ${PROJECT.name}
             return () => clearTimeout(timer);
         }
     }, [budgetData, tasksData, invoicesData, commentsData, materialsData, isLoggedIn]);
+
+
+    useEffect(() => {
+        if (isLoggedIn && currentProjectId) {
+            console.log('📊 Project changed to:', PROJECT.name);
+            fetchData();
+        }
+    }, [currentProjectId]);
+
+    // ========== PROJECT SELECTOR COMPONENT ==========
+    const ProjectSelector = () => (
+        <div className="relative">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Current Project
+            </label>
+            <select
+                value={currentProjectId}
+                onChange={(e) => {
+                    const newProjectId = e.target.value;
+
+                    if (window.confirm(`Switch to ${PROJECTS[newProjectId].shortName}?\n\nCurrent view will be cleared.`)) {
+                        console.log('🔄 Switching to project:', newProjectId);
+
+                        setSwitchingProject(true);
+                        setCurrentProjectId(newProjectId);
+                        localStorage.setItem('selectedProject', newProjectId);
+
+                        // Clear all data
+                        console.log('🗑️ Clearing data...');
+                        setTasksData([]);
+                        setTeamData([]);
+                        setBudgetData([]);
+                        setMaterialsData([]);
+                        setPerformanceData([]);
+                        setPhotosData([]);
+                        setCommentsData([]);
+                        setInvoicesData([]);
+                        setClientAccountData([]);
+                        setBudgetCategories([]);
+                        setBudgetExpenses([]);
+                        setDocumentsData([]);
+                        setNotifications([]);
+                        setPaymentMilestonesData([]);
+                        setChangeOrdersData([]);
+                        setCashFlowData([]);
+
+                        // Refetch data
+                        setTimeout(() => {
+                            console.log('📥 Fetching new project data...');
+                            fetchData();
+                            setSwitchingProject(false);
+                        }, 500);
+                    }
+                }}
+                className={`w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm ${darkMode ? 'bg-gray-700 text-white border-gray-600' : 'bg-white'
+                    }`}
+                disabled={switchingProject}
+            >
+                {Object.values(PROJECTS).map(project => (
+                    <option key={project.id} value={project.id}>
+                        {project.shortName}
+                    </option>
+                ))}
+            </select>
+
+            {/* Project Info Card */}
+            <div className={`mt-2 p-3 rounded-lg text-xs ${darkMode ? 'bg-gray-700' : 'bg-blue-50'
+                }`}>
+                <div className="flex items-center justify-between mb-1">
+                    <span className="text-gray-600 dark:text-gray-400">Client:</span>
+                    <span className="font-medium text-xs">{PROJECT.client}</span>
+                </div>
+                <div className="flex items-center justify-between mb-1">
+                    <span className="text-gray-600 dark:text-gray-400">Value:</span>
+                    <span className="font-medium">
+                        SAR {PROJECT.totalValue.toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2
+                        })}
+                    </span>
+                </div>
+                <div className="flex items-center justify-between">
+                    <span className="text-gray-600 dark:text-gray-400">End:</span>
+                    <span className="font-medium">
+                        {PROJECT.endDate.toLocaleDateString('en-US', {
+                            month: 'short',
+                            year: 'numeric'
+                        })}
+                    </span>
+                </div>
+            </div>
+        </div>
+    );
+
+    // ========== PROJECT SWITCHING OVERLAY ==========
+    const ProjectSwitchingOverlay = () => {
+        if (!switchingProject) return null;
+
+        return (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div className={`p-6 rounded-lg shadow-xl ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
+                    <RefreshCw className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
+                    <p className={`font-medium ${darkMode ? 'text-white' : 'text-gray-700'}`}>
+                        Switching to {PROJECTS[currentProjectId]?.shortName}...
+                    </p>
+                    <p className={`text-sm mt-2 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                        Loading project data...
+                    </p>
+                </div>
+            </div>
+        );
+    };
     // ========== AUTH ==========
 
     /**
@@ -2511,7 +2730,7 @@ Project: ${PROJECT.name}
         avgProgress: tasksData.length ? Math.round((tasksData.filter(t => t.status === "Completed").length / tasksData.length) * 100) : 0,
         totalBudget: budgetCategories.reduce((sum, cat) => sum + cat.allocated, 0),
         totalSpent: budgetCategories.reduce((sum, cat) => sum + getCategorySpent(cat.category_id), 0),
-        daysLeft: Math.ceil((PROJECT.end - new Date()) / 86400000),
+        daysLeft: Math.ceil((PROJECT.endDate - new Date()) / 86400000),
         invoicesTotal: invoicesData.reduce((s, i) => s + (Number(i.amount) || 0), 0),
         invoicesPaid: invoicesData.filter(i => i.status === "Paid").length,
         invoicesPending: invoicesData.filter(i => i.status === "Pending").length,
@@ -2565,165 +2784,120 @@ Project: ${PROJECT.name}
         </div>
     );
 
+    // ========== LOGIN PAGE مع Company Card ==========
+    // ========== LOGIN PAGE مع Company Card ==========
+    // ========== ENHANCED LOGIN PAGE ==========
     if (!isLoggedIn) {
         return (
-            <div className="min-h-screen relative overflow-hidden">
-                {/* Background Image with Overlay */}
-                <div
-                    className="absolute inset-0 z-0"
-                    style={{
-                        backgroundImage: `url(${process.env.REACT_APP_PROJECT_BG_IMAGE || 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=1920'})`,
-                        backgroundSize: 'cover',
-                        backgroundPosition: 'center',
-                        backgroundRepeat: 'no-repeat'
-                    }}
-                >
-                    {/* Dark Overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-br from-blue-900/90 via-gray-900/85 to-black/90"></div>
+            <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 relative overflow-hidden">
 
-                    {/* Animated Particles */}
-                    <div className="absolute inset-0">
-                        {[...Array(20)].map((_, i) => (
-                            <div
-                                key={i}
-                                className="absolute w-2 h-2 bg-white/20 rounded-full"
-                                style={{
-                                    left: `${Math.random() * 100}%`,
-                                    top: `${Math.random() * 100}%`,
-                                    animation: `float ${5 + Math.random() * 10}s linear infinite`,
-                                    animationDelay: `${Math.random() * 5}s`
-                                }}
-                            ></div>
-                        ))}
-                    </div>
+                {/* Background */}
+                <div className="absolute inset-0 overflow-hidden">
+                    <div
+                        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+                        style={{
+                            backgroundImage:
+                                "url(https://images.unsplash.com/photo-1639322537228-f710d846310a)",
+                            filter: "brightness(1.7) saturate(1.2)",
+                        }}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-br from-slate-900/90 via-blue-900/85 to-purple-900/90" />
                 </div>
 
-                {/* Content */}
-                <div className="relative z-10 min-h-screen flex">
-                    {/* Left Side - Project Info (Desktop Only) */}
-                    <div className="hidden lg:flex lg:w-1/2 flex-col justify-center items-center p-12 text-white">
-                        {/* Company Logo */}
-                        <div className="mb-8" style={{ animation: 'fadeIn 0.8s ease-out forwards' }}>
-                            <div className="w-32 h-32 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center border border-white/20 shadow-2xl">
-                                {process.env.REACT_APP_COMPANY_LOGO ? (
-                                    <img
-                                        src={process.env.REACT_APP_COMPANY_LOGO}
-                                        alt="Company Logo"
-                                        className="w-24 h-24 object-contain"
-                                    />
-                                ) : (
-                                    <Briefcase className="w-16 h-16 text-white" />
-                                )}
-                            </div>
-                        </div>
+                {/* Main Content */}
+                <div className="relative z-10 min-h-screen flex items-center justify-center p-4">
+                    <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
 
-                        {/* Project Info */}
-                        <div className="text-center space-y-6 max-w-lg" style={{ animation: 'slideUp 0.6s ease-out forwards' }}>
-                            <h1 className="text-5xl font-bold mb-4 bg-gradient-to-r from-white to-blue-200 bg-clip-text text-transparent">
-                                SEC-EOA Ph#3 Project- Jubail North & Jubail Residential Substations
-                            </h1>
-                            <p className="text-2xl text-blue-200 font-light">
-                                Low Current Systems
-                            </p>
-
-                            <div className="h-1 w-24 bg-gradient-to-r from-blue-400 to-purple-500 mx-auto rounded-full"></div>
-
-                            {/* Project Details */}
-                            <div className="space-y-4 text-left bg-white/5 backdrop-blur-md rounded-2xl p-6 border border-white/10">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center">
-                                        <Briefcase className="w-5 h-5 text-blue-300" />
-                                    </div>
-                                    <div>
-                                        <div className="text-xs text-gray-400">Client</div>
-                                        <div className="font-semibold">{PROJECT.client}</div>
-                                    </div>
-                                </div>
-
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 bg-purple-500/20 rounded-lg flex items-center justify-center">
-                                        <FileText className="w-5 h-5 text-purple-300" />
-                                    </div>
-                                    <div>
-                                        <div className="text-xs text-gray-400">Contract</div>
-                                        <div className="font-semibold text-sm">{PROJECT.contract}</div>
-                                    </div>
-                                </div>
-
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 bg-green-500/20 rounded-lg flex items-center justify-center">
-                                        <DollarSign className="w-5 h-5 text-green-300" />
-                                    </div>
-                                    <div>
-                                        <div className="text-xs text-gray-400">Contract Value</div>
-                                        <div className="font-semibold">
-                                            SAR {PROJECT.totalValue.toLocaleString()}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 bg-orange-500/20 rounded-lg flex items-center justify-center">
-                                        <Calendar className="w-5 h-5 text-orange-300" />
-                                    </div>
-                                    <div>
-                                        <div className="text-xs text-gray-400">Completion Date</div>
-                                        <div className="font-semibold">
-                                            {PROJECT.end.toLocaleDateString('en-US', {
-                                                month: 'long',
-                                                year: 'numeric'
-                                            })}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Features Badges */}
-                            <div className="flex flex-wrap gap-2 justify-center mt-6">
-                                {['Real-time Tracking', 'Budget Control', 'Team Collaboration', 'Analytics'].map((feature, i) => (
-                                    <span
-                                        key={i}
-                                        className="px-3 py-1 bg-white/10 backdrop-blur-sm rounded-full text-xs border border-white/20"
-                                        style={{
-                                            animation: 'fadeIn 0.8s ease-out forwards',
-                                            animationDelay: `${i * 0.1}s`,
-                                            opacity: 0
-                                        }}
+                        {/* ================= LEFT SIDE ================= */}
+                        <motion.div
+                            initial={{ opacity: 0, x: -50 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ duration: 0.8 }}
+                            className="hidden lg:block"
+                        >
+                            <div className="bg-white/10 backdrop-blur-xl rounded-3xl p-8 border border-white/20 shadow-2xl">
+                                {/* Company Card Content */}
+                                <div className="text-center mb-8">
+                                    <motion.div
+                                        whileHover={{ scale: 1.05, rotate: 5 }}
+                                        transition={{ type: "spring", stiffness: 300 }}
+                                        className="w-32 h-32 mx-auto mb-6 bg-white rounded-2xl p-4 shadow-xl flex items-center justify-center relative overflow-hidden group"
                                     >
-                                        {feature}
-                                    </span>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Right Side - Login Form */}
-                    <div className="w-full lg:w-1/2 flex items-center justify-center p-8">
-                        <div className="w-full max-w-md">
-                            {/* Mobile Logo */}
-                            <div className="lg:hidden text-center mb-8" style={{ animation: 'fadeIn 0.8s ease-out forwards' }}>
-                                <div className="w-20 h-20 bg-white/10 backdrop-blur-md rounded-xl mx-auto mb-4 flex items-center justify-center border border-white/20">
-                                    {process.env.REACT_APP_COMPANY_LOGO ? (
-                                        <img
-                                            src={process.env.REACT_APP_COMPANY_LOGO}
-                                            alt="Logo"
-                                            className="w-16 h-16 object-contain"
-                                        />
-                                    ) : (
-                                        <Briefcase className="w-12 h-12 text-white" />
-                                    )}
+                                        <div className="absolute inset-0 bg-gradient-to-br from-blue-600 to-purple-600 opacity-0 group-hover:opacity-10 transition-opacity duration-300" />
+                                        <Briefcase className="w-20 h-20 text-blue-600 relative z-10" />
+                                    </motion.div>
+                                    <motion.h1
+                                        initial={{ opacity: 0, y: 20 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ delay: 0.3 }}
+                                        className="text-3xl font-bold text-white mb-2"
+                                    >
+                                        {COMPANY_INFO.name}
+                                    </motion.h1>
+                                    <motion.p
+                                        initial={{ opacity: 0 }}
+                                        animate={{ opacity: 1 }}
+                                        transition={{ delay: 0.5 }}
+                                        className="text-blue-200 text-lg"
+                                    >
+                                        {COMPANY_INFO.tagline}
+                                    </motion.p>
                                 </div>
-                                <h2 className="text-2xl font-bold text-white mb-2">
-                                    Project Dashboard
-                                </h2>
-                                <p className="text-gray-300 text-sm">
-                                    {PROJECT.client}
-                                </p>
-                            </div>
 
-                            {/* Login Card - Glass Morphism */}
-                            <div className="bg-white/10 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/20 p-8" style={{ animation: 'slideUp 0.6s ease-out forwards' }}>
-                                {/* Header */}
+                                {/* Company Stats */}
+                                <div className="grid grid-cols-2 gap-4 mb-8">
+                                    {[
+                                        { value: COMPANY_INFO.projects, label: 'Projects', icon: Briefcase },
+                                        { value: COMPANY_INFO.clients, label: 'Happy Clients', icon: Users },
+                                        { value: COMPANY_INFO.employees, label: 'Employees', icon: Users },
+                                        { value: COMPANY_INFO.founded, label: 'Established', icon: Calendar, isYear: true }
+                                    ].map((stat, index) => (
+                                        <motion.div
+                                            key={index}
+                                            initial={{ opacity: 0, scale: 0.8 }}
+                                            animate={{ opacity: 1, scale: 1 }}
+                                            transition={{ delay: 0.6 + index * 0.1 }}
+                                            whileHover={{ scale: 1.05, backgroundColor: 'rgba(255,255,255,0.15)' }}
+                                            className="bg-white/10 backdrop-blur-sm rounded-xl p-4 text-center border border-white/20 cursor-pointer transition-all duration-300"
+                                        >
+                                            <div className="text-3xl font-bold text-white mb-1">
+                                                {stat.isYear ? stat.value : <><CountUp end={parseInt(stat.value)} duration={2.5} />+</>}
+                                            </div>
+                                            <div className="text-blue-200 text-sm">{stat.label}</div>
+                                        </motion.div>
+                                    ))}
+                                </div>
+
+                                {/* Company Contact */}
+                                <motion.div
+                                    initial={{ opacity: 0, y: 20 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ delay: 1 }}
+                                    className="space-y-3"
+                                >
+                                    {[
+                                        { icon: MapPin, text: COMPANY_INFO.address },
+                                        { icon: Phone, text: COMPANY_INFO.phone },
+                                        { icon: Mail, text: COMPANY_INFO.email }
+                                    ].map((contact, index) => (
+                                        <motion.div
+                                            key={index}
+                                            whileHover={{ x: 5 }}
+                                            className="flex items-center gap-3 text-white cursor-pointer"
+                                        >
+                                            <contact.icon size={18} className="text-blue-300" />
+                                            <span className="text-sm">{contact.text}</span>
+                                        </motion.div>
+                                    ))}
+                                </motion.div>
+                            </div>
+                        </motion.div>
+
+                        {/* ================= RIGHT SIDE ================= */}
+                        <div className="flex flex-col">
+
+                            {/* Login Card */}
+                            <div className="bg-white/10 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/20 p-8">
                                 <div className="text-center mb-8">
                                     <h3 className="text-3xl font-bold text-white mb-2">
                                         Welcome Back
@@ -2733,21 +2907,20 @@ Project: ${PROJECT.name}
                                     </p>
                                 </div>
 
-                                {/* Error Message */}
                                 {loginError && (
-                                    <div className="mb-6 p-4 bg-red-500/20 backdrop-blur-sm border border-red-500/50 rounded-xl flex items-center gap-3" style={{ animation: 'shake 0.5s ease-in-out' }}>
+                                    <div className="mb-6 p-4 bg-red-500/20 border border-red-500/50 rounded-xl flex items-center gap-3">
                                         <AlertCircle className="w-5 h-5 text-red-300 flex-shrink-0" />
                                         <p className="text-red-200 text-sm">{loginError}</p>
                                     </div>
                                 )}
 
-                                {/* Form */}
-                                <form onSubmit={(e) => { e.preventDefault(); handleLogin(); }} className="space-y-6">
+                                <form
+                                    onSubmit={(e) => { e.preventDefault(); handleLogin(); }}
+                                    className="space-y-6"
+                                >
                                     {/* Username */}
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-200 mb-2">
-                                            Username
-                                        </label>
+                                        <label className="block text-sm font-medium text-gray-200 mb-2">Username</label>
                                         <div className="relative">
                                             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                                                 <Shield className="w-5 h-5 text-gray-400" />
@@ -2756,7 +2929,7 @@ Project: ${PROJECT.name}
                                                 type="text"
                                                 value={loginForm.username}
                                                 onChange={(e) => setLoginForm({ ...loginForm, username: e.target.value })}
-                                                className="w-full pl-12 pr-4 py-3 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-transparent transition-all"
+                                                className="w-full pl-12 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
                                                 placeholder="Enter your username"
                                                 autoComplete="username"
                                                 required
@@ -2766,9 +2939,7 @@ Project: ${PROJECT.name}
 
                                     {/* Password */}
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-200 mb-2">
-                                            Password
-                                        </label>
+                                        <label className="block text-sm font-medium text-gray-200 mb-2">Password</label>
                                         <div className="relative">
                                             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                                                 <Lock className="w-5 h-5 text-gray-400" />
@@ -2777,8 +2948,7 @@ Project: ${PROJECT.name}
                                                 type="password"
                                                 value={loginForm.password}
                                                 onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
-                                                onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
-                                                className="w-full pl-12 pr-4 py-3 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-transparent transition-all"
+                                                className="w-full pl-12 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
                                                 placeholder="Enter your password"
                                                 autoComplete="current-password"
                                                 required
@@ -2786,22 +2956,13 @@ Project: ${PROJECT.name}
                                         </div>
                                     </div>
 
-                                    {/* Login Button */}
                                     <button
                                         type="submit"
-                                        className="w-full py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02] flex items-center justify-center gap-2"
+                                        className="w-full py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-xl"
                                     >
                                         Sign In
-                                        <ChevronRight className="w-5 h-5" />
                                     </button>
                                 </form>
-
-                                {/* Footer */}
-                                <div className="mt-8 pt-6 border-t border-white/10">
-                                    <p className="text-center text-sm text-gray-400">
-                                        Powered by <span className="text-white font-semibold">Al Rammah</span>
-                                    </p>
-                                </div>
                             </div>
 
                             {/* Quick Access */}
@@ -2811,257 +2972,618 @@ Project: ${PROJECT.name}
                                     {Object.entries(USERS).map(([key, user]) => (
                                         <button
                                             key={key}
-                                            onClick={() => setLoginForm({ username: key, password: '' })}
-                                            className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 hover:bg-white/20 transition-all overflow-hidden"
+                                            onClick={() => setLoginForm({ username: key, password: "" })}
+                                            className="w-12 h-12 rounded-full bg-white/10 border border-white/20 overflow-hidden"
                                             title={user.name}
                                         >
-                                            <img
-                                                src={user.avatar}
-                                                alt={user.name}
-                                                className="w-full h-full object-cover"
-                                            />
+                                            <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
                                         </button>
                                     ))}
                                 </div>
                             </div>
-                        </div>
-                    </div>
-                </div>
 
-                {/* Footer Info */}
-                <div className="absolute bottom-0 left-0 right-0 z-10 p-6">
-                    <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between text-white/60 text-sm gap-4">
-                        <div className="flex items-center gap-2 sm:gap-6">
-                            <span>© 2026 Al Rammah Company</span>
-                            <span className="hidden sm:inline">•</span>
-                            <span>Project Management and Operations Dept.</span>
-                        </div>
-                        <div className="flex items-center gap-4">
-                            <a href="#" className="hover:text-white transition-colors">Privacy</a>
-                            <a href="#" className="hover:text-white transition-colors">Terms</a>
-                            <a href="#" className="hover:text-white transition-colors">Support</a>
-                        </div>
-                    </div>
-                </div>
+                        </div> {/* End RIGHT SIDE */}
+
+                    </div> {/* End grid */}
+                </div> {/* End Main Content */}
+
             </div>
         );
     }
-    if (loading) {
-        return (
-            <div className="min-h-screen bg-gradient-to-br from-blue-600 to-purple-700 flex items-center justify-center">
-                <div className="text-center">
-                    <div className="w-20 h-20 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-                    <p className="text-2xl font-bold text-white mb-2">Loading Dashboard...</p>
-                    <p className="text-white/80 text-sm">Fetching latest data from Google Sheets</p>
-                </div>
-            </div>
-        );
-    }
+    // ========== ADDITIONAL STATE (Add to your component) ==========
+    // Add these state variables at the top of your component:
+    // const [showPassword, setShowPassword] = useState(false);
+    // const [loginError, setLoginError] = useState('');
 
-    // Calculate system health for overview
-    const systemsHealth = [...new Set(tasksData.map(t => t.system))].filter(Boolean).map(sys => {
-        const sysTasks = tasksData.filter(t => t.system === sys);
-        const completed = sysTasks.filter(t => t.status === "Completed").length;
-        return {
-            system: sys,
-            total: sysTasks.length,
-            completed,
-            progress: sysTasks.length ? Math.round((completed / sysTasks.length) * 100) : 0
-        };
-    });
-    //console.log(process.env.REACT_APP_KHALID_PHOTO)
-
+    // ========== REQUIRED IMPORTS ==========
+    // Make sure you have these imports:
+    // import { User, Lock, Eye, EyeOff, CheckCircle, AlertCircle, ArrowRight } from 'lucide-react';
+    // import { AnimatePresence } from 'framer-motion';
     // ========== MAIN DASHBOARD ==========
     return (
+        <div className={`min-h-screen ${theme.bg} transition-colors duration-300`}>
+            {/* Project Switching Overlay */}
+            <ProjectSwitchingOverlay />
 
-        <div className={`min-h-screen ${theme.bg} ${theme.text}`}>
-            {/* HEADER */}
-            <div className={`${theme.card} border-b ${theme.border} sticky top-0 z-40 shadow-lg`}>
-                <div className="max-w-7xl mx-auto px-4 py-4">
-                    <div className="flex items-center justify-between">
+            {/* ============ PROFESSIONAL HEADER ============ */}
+            <div className={`${theme.card} border-b ${theme.border} sticky top-0 z-50 backdrop-blur-xl bg-opacity-95 shadow-lg`}>
+                <div className="max-w-[1920px] mx-auto px-6 lg:px-8">
+
+                    {/* Top Bar */}
+                    <div className="flex items-center justify-between py-4">
+
+                        {/* Left Section: Logo + Project Info */}
                         <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center">
-                                <Activity className="text-white" size={24} />
+                            {/* Logo */}
+                            <motion.div
+                                initial={{ scale: 0 }}
+                                animate={{ scale: 1 }}
+                                transition={{ type: "spring", stiffness: 260, damping: 20 }}
+                                className="relative group"
+                            >
+                                <div className="w-14 h-14 bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700 rounded-2xl flex items-center justify-center shadow-xl shadow-blue-500/20 group-hover:shadow-2xl group-hover:shadow-blue-500/40 transition-all duration-300 group-hover:scale-105">
+                                    <Briefcase className="w-7 h-7 text-white" strokeWidth={2.5} />
+                                </div>
+                                <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-gradient-to-br from-emerald-400 to-emerald-600 border-3 border-white dark:border-slate-900 rounded-full shadow-lg animate-pulse"></div>
+                            </motion.div>
+
+                            {/* Project Info */}
+                            <div className="hidden lg:block">
+                                <h1 className={`text-xl font-bold ${theme.text} tracking-tight`}>
+                                    {PROJECT.shortName}
+                                </h1>
+                                <div className="flex items-center gap-3 mt-1">
+                                    <span className={`text-sm ${theme.subtext}`}>{PROJECT.client}</span>
+                                    <span className="w-1 h-1 rounded-full bg-slate-400"></span>
+                                    <span className="px-2.5 py-0.5 bg-gradient-to-r from-blue-500 to-indigo-500 text-white text-xs font-semibold rounded-full shadow-sm">
+                                        Active
+                                    </span>
+                                </div>
                             </div>
-                            <div>
-                                <h1 className="text-xl font-bold">{PROJECT.name}</h1>
-                                <p className="text-sm text-gray-500">{PROJECT.client}</p>
-                            </div>
+
+                            {/* Mobile Menu Toggle */}
+                            <button
+                                onClick={() => setShowMobileMenu(!showMobileMenu)}
+                                className={`lg:hidden p-2.5 rounded-lg ${theme.hover} transition-colors`}
+                            >
+                                {showMobileMenu ? <X size={24} /> : <Menu size={24} />}
+                            </button>
                         </div>
 
+                        {/* Center Section: Project Selector */}
+                        <div className="hidden xl:flex flex-1 max-w-md mx-8">
+                            <ProjectSelector
+                                currentProjectId={currentProjectId}
+                                onProjectChange={handleProjectChange}
+                                projects={PROJECTS}
+                            />
+                        </div>
 
-                        <div className="flex items-center gap-3">
-                            <button
+                        {/* Right Section: Actions */}
+                        <div className="flex items-center gap-2">
+
+                            {/* Quick Stats */}
+                            <div className="hidden 2xl:flex items-center gap-2">
+                                <motion.div
+                                    whileHover={{ scale: 1.05 }}
+                                    className="px-4 py-2 rounded-xl bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 dark:from-blue-900/20 dark:to-blue-800/20 dark:border-blue-800"
+                                >
+                                    <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">Tasks</p>
+                                    <p className="text-lg font-bold text-blue-700 dark:text-blue-300">
+                                        <CountUp end={stats.completed} duration={1} />/{stats.totalTasks}
+                                    </p>
+                                </motion.div>
+                                <motion.div
+                                    whileHover={{ scale: 1.05 }}
+                                    className="px-4 py-2 rounded-xl bg-gradient-to-br from-green-50 to-green-100 border border-green-200 dark:from-green-900/20 dark:to-green-800/20 dark:border-green-800"
+                                >
+                                    <p className="text-xs text-green-600 dark:text-green-400 font-medium">Team</p>
+                                    <p className="text-lg font-bold text-green-700 dark:text-green-300">
+                                        <CountUp end={teamData.length} duration={1} />
+                                    </p>
+                                </motion.div>
+                                <motion.div
+                                    whileHover={{ scale: 1.05 }}
+                                    className="px-4 py-2 rounded-xl bg-gradient-to-br from-purple-50 to-purple-100 border border-purple-200 dark:from-purple-900/20 dark:to-purple-800/20 dark:border-purple-800"
+                                >
+                                    <p className="text-xs text-purple-600 dark:text-purple-400 font-medium">Budget</p>
+                                    <p className="text-lg font-bold text-purple-700 dark:text-purple-300">
+                                        <CountUp end={Math.round((stats.totalSpent / stats.totalBudget) * 100)} duration={1} />%
+                                    </p>
+                                </motion.div>
+                            </div>
+
+                            {/* Divider */}
+                            <div className={`hidden 2xl:block w-px h-10 ${darkMode ? 'bg-slate-700' : 'bg-slate-200'}`}></div>
+
+                            {/* Auto Refresh */}
+                            <motion.button
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
                                 onClick={() => setAutoRefresh(!autoRefresh)}
-                                className={`p-2 rounded-lg ${autoRefresh ? 'bg-green-500 text-white' : 'bg-gray-200'}`}
+                                className={`p-3 rounded-xl transition-all duration-300 ${autoRefresh
+                                    ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/30 hover:shadow-xl hover:shadow-emerald-500/40'
+                                    : `${theme.input} ${theme.text} ${theme.hover} border ${theme.border}`
+                                    }`}
                                 title="Auto-refresh every 30s"
                             >
-                                <RefreshCw size={20} className={autoRefresh ? 'animate-spin' : ''} />
-                            </button>
+                                <RefreshCw size={18} className={autoRefresh ? 'animate-spin' : ''} strokeWidth={2.5} />
+                            </motion.button>
 
+                            {/* Notifications */}
                             <div className="relative">
-                                <button
+                                <motion.button
+                                    whileHover={{ scale: 1.05 }}
+                                    whileTap={{ scale: 0.95 }}
                                     onClick={() => setShowNotifications(!showNotifications)}
-                                    className="p-2 rounded-lg bg-gray-200 relative"
+                                    className={`p-3 rounded-xl relative transition-all duration-200 ${theme.input} ${theme.hover} border ${theme.border}`}
                                 >
-                                    <Bell size={20} />
+                                    <Bell size={18} className={theme.text} strokeWidth={2.5} />
                                     {notifications.length > 0 && (
-                                        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                                            {notifications.length}
-                                        </span>
+                                        <>
+                                            <span className="absolute top-1 right-1 w-5 h-5 bg-gradient-to-r from-red-500 to-rose-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center shadow-lg z-10">
+                                                {notifications.length}
+                                            </span>
+                                            <span className="absolute top-1 right-1 w-5 h-5 bg-red-500 rounded-full animate-ping opacity-75"></span>
+                                        </>
                                     )}
-                                </button>
+                                </motion.button>
 
-                                {showNotifications && (
-                                    <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-xl border max-h-96 overflow-y-auto">
-                                        <div className="p-4 border-b">
-                                            <h3 className="font-bold">Notifications</h3>
-                                        </div>
-                                        {notifications.length === 0 ? (
-                                            <div className="p-4 text-center text-gray-500">
-                                                No notifications
-                                            </div>
-                                        ) : (
-                                            <div className="divide-y">
-                                                {notifications.map(notif => (
-                                                    <div key={notif.id} className={`p-4 ${notif.priority === 'high' ? 'bg-red-50' : ''}`}>
-                                                        <p className="text-sm">{notif.message}</p>
-                                                        <p className="text-xs text-gray-400 mt-1">{notif.time}</p>
+                                {/* Notifications Dropdown */}
+                                <AnimatePresence>
+                                    {showNotifications && (
+                                        <motion.div
+                                            initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                                            exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                            transition={{ duration: 0.2 }}
+                                            className={`absolute right-0 mt-3 w-96 ${theme.card} rounded-2xl shadow-2xl border ${theme.border} overflow-hidden z-50`}
+                                        >
+                                            <div className="p-5 bg-gradient-to-r from-blue-600 to-indigo-600">
+                                                <div className="flex items-center justify-between">
+                                                    <div>
+                                                        <h3 className="font-bold text-white text-lg">Notifications</h3>
+                                                        <p className="text-blue-100 text-sm mt-0.5">{notifications.length} unread messages</p>
                                                     </div>
-                                                ))}
+                                                    <button className="p-2 rounded-lg bg-white/20 hover:bg-white/30 transition-colors">
+                                                        <Settings size={18} className="text-white" />
+                                                    </button>
+                                                </div>
                                             </div>
-                                        )}
-                                    </div>
-                                )}
+
+                                            {notifications.length === 0 ? (
+                                                <div className="p-12 text-center">
+                                                    <Bell className={`w-16 h-16 mx-auto ${theme.subtext} opacity-30`} />
+                                                    <p className={`${theme.subtext} mt-3 text-sm`}>No new notifications</p>
+                                                </div>
+                                            ) : (
+                                                <div className="max-h-[400px] overflow-y-auto">
+                                                    {notifications.map((notif, idx) => {
+                                                        const Icon = notif.icon;
+                                                        return (
+                                                            <motion.div
+                                                                key={notif.id}
+                                                                initial={{ opacity: 0, x: -20 }}
+                                                                animate={{ opacity: 1, x: 0 }}
+                                                                transition={{ delay: idx * 0.05 }}
+                                                                className={`p-4 border-b ${theme.border} ${theme.hover} cursor-pointer transition-colors group ${idx === notifications.length - 1 ? 'border-b-0' : ''}`}
+                                                            >
+                                                                <div className="flex items-start gap-3">
+                                                                    <div className={`p-2 rounded-lg bg-${notif.color}-100 dark:bg-${notif.color}-900/30 group-hover:scale-110 transition-transform`}>
+                                                                        <Icon size={18} className={`text-${notif.color}-600 dark:text-${notif.color}-400`} />
+                                                                    </div>
+                                                                    <div className="flex-1 min-w-0">
+                                                                        <p className={`text-sm ${theme.text} font-medium`}>{notif.message}</p>
+                                                                        <p className={`text-xs ${theme.subtext} mt-1 flex items-center gap-1`}>
+                                                                            <Clock size={12} />
+                                                                            {notif.time}
+                                                                        </p>
+                                                                    </div>
+                                                                    {notif.priority === 'high' && (
+                                                                        <span className="px-2 py-1 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-xs font-semibold rounded-full">
+                                                                            Urgent
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            </motion.div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
+
+                                            <div className={`p-3 border-t ${theme.border} bg-slate-50 dark:bg-slate-800/50`}>
+                                                <button className="w-full text-center text-sm font-semibold text-blue-600 hover:text-blue-700 transition-colors">
+                                                    View all notifications
+                                                </button>
+                                            </div>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
                             </div>
 
-                            <button onClick={() => setDarkMode(!darkMode)} className="p-2 rounded-lg bg-gray-200">
-                                {darkMode ? <Sun size={20} /> : <Moon size={20} />}
-                            </button>
+                            {/* Settings */}
+                            <motion.button
+                                whileHover={{ scale: 1.05, rotate: 90 }}
+                                whileTap={{ scale: 0.95 }}
+                                className={`hidden md:flex p-3 rounded-xl transition-all duration-200 ${theme.input} ${theme.hover} border ${theme.border}`}
+                            >
+                                <Settings size={18} className={theme.text} strokeWidth={2.5} />
+                            </motion.button>
 
-                            <div className="flex items-center gap-3 border-l pl-3">
+                            {/* Theme Toggle */}
+                            <motion.button
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95, rotate: 180 }}
+                                onClick={() => setDarkMode(!darkMode)}
+                                className={`p-3 rounded-xl transition-all duration-200 ${theme.input} ${theme.hover} border ${theme.border}`}
+                            >
+                                {darkMode ?
+                                    <Sun size={18} className="text-amber-500" strokeWidth={2.5} /> :
+                                    <Moon size={18} className="text-slate-700" strokeWidth={2.5} />
+                                }
+                            </motion.button>
 
+                            {/* Divider */}
+                            <div className={`w-px h-10 ${darkMode ? 'bg-slate-700' : 'bg-slate-200'}`}></div>
 
-                                <img src={currentUser.avatar} alt={currentUser.name} className="w-10 h-10 rounded-full" />
-                                <div className="text-sm">
-                                    <p className="font-semibold">{currentUser.name}</p>
-                                    <p className="text-xs text-gray-500">{currentUser.position}</p>
-                                </div>
-                                <button onClick={handleLogout} className="p-2 rounded-lg bg-red-100 text-red-600 hover:bg-red-200">
-                                    <LogOut size={18} />
-                                </button>
+                            {/* User Menu */}
+                            <div className="relative">
+                                <motion.button
+                                    whileHover={{ scale: 1.02 }}
+                                    whileTap={{ scale: 0.98 }}
+                                    onClick={() => setShowUserMenu(!showUserMenu)}
+                                    className={`flex items-center gap-3 p-2 pr-4 rounded-xl transition-all duration-200 ${theme.hover} border ${theme.border}`}
+                                >
+                                    <div className="relative">
+                                        <img
+                                            src={currentUser.avatar}
+                                            alt={currentUser.name}
+                                            className="w-10 h-10 rounded-xl ring-2 ring-blue-500 object-cover shadow-md"
+                                        />
+                                        <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 border-2 border-white dark:border-slate-800 rounded-full"></div>
+                                    </div>
+                                    <div className="text-left hidden xl:block">
+                                        <p className={`text-sm font-semibold ${theme.text} leading-tight`}>{currentUser.name}</p>
+                                        <p className={`text-xs ${theme.subtext} leading-tight`}>{currentUser.position}</p>
+                                    </div>
+                                    <ChevronDown size={16} className={`${theme.subtext} transition-transform ${showUserMenu ? 'rotate-180' : ''}`} />
+                                </motion.button>
+
+                                {/* User Dropdown */}
+                                <AnimatePresence>
+                                    {showUserMenu && (
+                                        <motion.div
+                                            initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                                            exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                            transition={{ duration: 0.2 }}
+                                            className={`absolute right-0 mt-3 w-64 ${theme.card} rounded-2xl shadow-2xl border ${theme.border} overflow-hidden z-50`}
+                                        >
+                                            <div className="p-4 bg-gradient-to-r from-blue-600 to-indigo-600">
+                                                <div className="flex items-center gap-3">
+                                                    <img src={currentUser.avatar} alt="" className="w-12 h-12 rounded-xl border-2 border-white" />
+                                                    <div>
+                                                        <p className="text-white font-semibold">{currentUser.name}</p>
+                                                        <p className="text-blue-100 text-xs">{currentUser.department}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="p-2">
+                                                <button className={`w-full flex items-center gap-3 p-3 rounded-lg ${theme.hover} transition-colors`}>
+                                                    <Settings size={18} className={theme.text} />
+                                                    <span className={`text-sm font-medium ${theme.text}`}>Settings</span>
+                                                </button>
+                                                <button className={`w-full flex items-center gap-3 p-3 rounded-lg ${theme.hover} transition-colors`}>
+                                                    <Users size={18} className={theme.text} />
+                                                    <span className={`text-sm font-medium ${theme.text}`}>Switch Project</span>
+                                                </button>
+                                            </div>
+
+                                            <div className={`p-2 border-t ${theme.border}`}>
+                                                <button
+                                                    onClick={handleLogout}
+                                                    className="w-full flex items-center gap-3 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+                                                >
+                                                    <LogOut size={18} />
+                                                    <span className="text-sm font-semibold">Logout</span>
+                                                </button>
+                                            </div>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
                             </div>
                         </div>
                     </div>
-                    <div>
 
 
 
-                    </div>
+                    {/* Navigation Tabs */}
+                    <div className="relative -mb-px">
+                        <div className="flex gap-1 overflow-x-auto scrollbar-hide pb-3">
+                            {["Overview", "Tasks", "Team", "Materials", "Photos", "Invoices", "Client Account", "Comments", "Timeline", "Documents", "Expenses Management"].map((item, idx) => {
+                                const icons = {
+                                    "Overview": TrendingUp,
+                                    "Tasks": CheckCircle,
+                                    "Team": Users,
+                                    "Materials": Package,
+                                    "Photos": ImageIcon,
+                                    "Invoices": Receipt,
+                                    "Client Account": Wallet,
+                                    "Comments": MessageSquare,
+                                    "Timeline": Calendar,
+                                    "Documents": FileText,
+                                    "Expenses Management": DollarSign
+                                };
+                                const Icon = icons[item];
 
-                    {/* NAVIGATION */}
-                    <div className="flex gap-2 mt-4 overflow-x-auto pb-2">
-                        {["Overview", "Tasks", "Team", "Materials", "Photos", "Invoices", "Client Account", "Comments", "Timeline", "Documents", "Expenses Management"].map(v => (
-                            <button
-                                key={v}
-                                onClick={() => setView(v)}
-                                className={`px-4 py-2 rounded-lg font-semibold whitespace-nowrap transition-all ${view === v
-                                    ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg'
-                                    : `${theme.card} ${theme.hover}`
-                                    }`}
-                            >
-                                {v}
-                            </button>
-                        ))}
+                                return (
+                                    <motion.button
+                                        key={idx}
+                                        whileHover={{ scale: 1.05 }}
+                                        whileTap={{ scale: 0.95 }}
+                                        onClick={() => setView(item)}
+                                        className={`group relative flex items-center gap-2 px-5 py-3 rounded-t-xl font-semibold whitespace-nowrap transition-all duration-200 ${view === item
+                                            ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/20'
+                                            : `${theme.text} ${theme.hover}`
+                                            }`}
+                                    >
+                                        <Icon size={16} strokeWidth={2.5} className={view === item ? 'text-white' : theme.subtext} />
+                                        <span>{item}</span>
+                                        {view === item && (
+                                            <motion.div
+                                                layoutId="activeTab"
+                                                className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-8 h-1 bg-white rounded-t-full"
+                                            ></motion.div>
+                                        )}
+                                    </motion.button>
+                                );
+                            })}
+                        </div>
                     </div>
                 </div>
             </div>
+
+            {/* Mobile Menu */}
+            <AnimatePresence>
+                {showMobileMenu && (
+                    <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.3 }}
+                        className={`lg:hidden ${theme.bg} border-b ${theme.border} overflow-hidden`}
+                    >
+                        <div className="p-4 space-y-2">
+                            {["Overview", "Tasks", "Team", "Materials", "Photos", "Invoices", "Client Account", "Comments", "Timeline", "Documents", "Expenses Management"].map((item, idx) => {
+                                const icons = {
+                                    "Overview": TrendingUp,
+                                    "Tasks": CheckCircle,
+                                    "Team": Users,
+                                    "Materials": Package,
+                                    "Photos": ImageIcon,
+                                    "Invoices": Receipt,
+                                    "Client Account": Wallet,
+                                    "Comments": MessageSquare,
+                                    "Timeline": Calendar,
+                                    "Documents": FileText,
+                                    "Expenses Management": DollarSign
+                                };
+                                const Icon = icons[item];
+
+                                return (
+                                    <motion.button
+                                        key={idx}
+                                        initial={{ opacity: 0, x: -20 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        transition={{ delay: idx * 0.05 }}
+                                        onClick={() => {
+                                            setView(item);
+                                            setShowMobileMenu(false);
+                                        }}
+                                        className={`w-full flex items-center gap-3 p-3 rounded-lg transition-all ${view === item
+                                            ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white'
+                                            : `${theme.hover} ${theme.text}`
+                                            }`}
+                                    >
+                                        <Icon size={18} />
+                                        <span className="font-medium">{item}</span>
+                                    </motion.button>
+                                );
+                            })}
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             {/* CONTENT */}
             <div className="max-w-7xl mx-auto px-4 py-6">
                 {/* OVERVIEW */}
                 {view === "Overview" && (
-                    <div className="space-y-6">
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.5 }}
+                        className="space-y-6"
+                    >
+                        {/* Stats Grid - 6 Cards */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {/* Tasks Completed */}
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                transition={{ delay: 0.1 }}
+                                whileHover={{ scale: 1.05, y: -5 }}
+                                className={`${theme.card} rounded-2xl p-6 border ${theme.border} shadow-lg hover:shadow-2xl transition-all duration-300 relative overflow-hidden`}
+                            >
+                                <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-green-400/20 to-emerald-600/20 rounded-full blur-3xl"></div>
+                                <div className="relative z-10">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <div className="p-3 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/30 dark:to-green-800/30 rounded-xl">
+                                            <CheckCircle className="text-green-600 dark:text-green-400" size={28} />
+                                        </div>
+                                        <span className="text-xs font-bold text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/30 px-3 py-1 rounded-full">
+                                            +12%
+                                        </span>
+                                    </div>
+                                    <h3 className={`text-4xl font-bold ${theme.text} mb-2`}>
+                                        <CountUp end={stats.completed} duration={2} />/
+                                        <CountUp end={stats.totalTasks} duration={2} />
+                                    </h3>
+                                    <p className={`text-sm ${theme.subtext} mb-4`}>Tasks Completed</p>
+                                    <div className="flex items-center gap-2">
+                                        <div className="flex-1 h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                                            <motion.div
+                                                initial={{ width: 0 }}
+                                                animate={{ width: `${stats.avgProgress}%` }}
+                                                transition={{ duration: 1, delay: 0.5 }}
+                                                className="h-full bg-gradient-to-r from-green-500 to-emerald-500 rounded-full"
+                                            ></motion.div>
+                                        </div>
+                                        <span className="text-xs font-bold text-green-600">
+                                            <CountUp end={stats.avgProgress} duration={1} />%
+                                        </span>
+                                    </div>
+                                </div>
+                            </motion.div>
 
-                        {/* Stats Grid */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                            <StatCard
-                                icon={CheckCircle}
-                                title="Tasks Completed"
-                                value={`${stats.completed}/${stats.totalTasks}`}
-                                subtitle={`${stats.avgProgress}% Progress`}
-                                color="from-green-400 to-emerald-600"
-                                trend={`+${stats.avgProgress}%`}
-                            />
-                            <StatCard
-                                icon={Activity}
-                                title="In Progress"
-                                value={stats.inProgress}
-                                subtitle={`${stats.pending} Pending`}
-                                color="from-blue-400 to-blue-600"
-                            />
-                            <StatCard
-                                icon={DollarSign}
-                                title="Budget Spent"
-                                value={formatCurrency(stats.totalSpent)}
-                                subtitle={`of ${formatCurrency(stats.totalBudget)}`}
-                                color="from-purple-400 to-purple-600"
-                                trend={`${Math.round((stats.totalSpent / stats.totalBudget) * 100)}%`}
-                            />
-                            <StatCard
-                                icon={Calendar}
-                                title="Days Remaining"
-                                value={stats.daysLeft}
-                                subtitle={`Until ${PROJECT.end.toLocaleDateString()}`}
-                                color="from-orange-400 to-red-600"
-                            />
-                            <StatCard
-                                icon={Receipt}
-                                title="Total Invoices"
-                                value={formatCurrency(stats.invoicesTotal)}
-                                subtitle={`${stats.invoicesPaid} Paid, ${stats.invoicesPending} Pending`}
-                                color="from-cyan-400 to-cyan-600"
-                            />
-                            <StatCard
-                                icon={Wallet}
-                                title="Client Balance"
-                                value={formatCurrency(stats.clientBalance)}
-                                subtitle={`${stats.clientBalance >= 0 ? 'Credit' : 'Debit'}`}
-                                color={stats.clientBalance >= 0 ? "from-green-400 to-green-600" : "from-red-400 to-red-600"}
-                                trend={stats.clientBalance >= 0 ? '+' : '-'}
-                            />
-                            <StatCard
-                                icon={TrendingUp}
-                                title="Total Invoiced"
-                                value={formatCurrency(stats.totalInvoiced)}
-                                subtitle="To client"
-                                color="from-indigo-400 to-indigo-600"
-                            />
-                            <StatCard
-                                icon={TrendingDown}
-                                title="Total Received"
-                                value={formatCurrency(stats.totalReceived)}
-                                subtitle="From client"
-                                color="from-teal-400 to-teal-600"
-                            />
-                        </div>
+                            {/* Active Team Members */}
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                transition={{ delay: 0.2 }}
+                                whileHover={{ scale: 1.05, y: -5 }}
+                                className={`${theme.card} rounded-2xl p-6 border ${theme.border} shadow-lg hover:shadow-2xl transition-all duration-300 relative overflow-hidden`}
+                            >
+                                <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-400/20 to-blue-600/20 rounded-full blur-3xl"></div>
+                                <div className="relative z-10">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <div className="p-3 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/30 rounded-xl">
+                                            <Users className="text-blue-600 dark:text-blue-400" size={28} />
+                                        </div>
+                                        <Zap className="text-blue-500" size={20} />
+                                    </div>
+                                    <h3 className={`text-4xl font-bold ${theme.text} mb-2`}>
+                                        <CountUp end={teamData.length} duration={2} />
+                                    </h3>
+                                    <p className={`text-sm ${theme.subtext}`}>Active Team Members</p>
+                                </div>
+                            </motion.div>
 
-                        {/* Systems Health */}
-                        <div className={`${theme.card} rounded-xl p-6 shadow-lg border ${theme.border}`}>
-                            <h2 className="text-2xl font-bold mb-6">Systems Health</h2>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                {systemsHealth.map(sys => (
-                                    <SystemHealthCard key={sys.system} {...sys} />
-                                ))}
-                            </div>
+                            {/* Budget Spent */}
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                transition={{ delay: 0.3 }}
+                                whileHover={{ scale: 1.05, y: -5 }}
+                                className={`${theme.card} rounded-2xl p-6 border ${theme.border} shadow-lg hover:shadow-2xl transition-all duration-300 relative overflow-hidden`}
+                            >
+                                <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-purple-400/20 to-purple-600/20 rounded-full blur-3xl"></div>
+                                <div className="relative z-10">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <div className="p-3 bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/30 dark:to-purple-800/30 rounded-xl">
+                                            <DollarSign className="text-purple-600 dark:text-purple-400" size={28} />
+                                        </div>
+                                        <span className={`text-xs font-bold px-3 py-1 rounded-full ${(stats.totalSpent / stats.totalBudget) * 100 > 80 ? 'text-red-600 bg-red-100 dark:bg-red-900/30' : 'text-purple-600 bg-purple-100 dark:bg-purple-900/30'}`}>
+                                            <CountUp end={Math.round((stats.totalSpent / stats.totalBudget) * 100)} duration={1} />%
+                                        </span>
+                                    </div>
+                                    <h3 className={`text-3xl font-bold ${theme.text} mb-2`}>SAR <CountUp end={stats.totalSpent} duration={2} separator="," /></h3>
+                                    <p className={`text-sm ${theme.subtext} mb-4`}>of {formatCurrency(stats.totalBudget)} spent</p>
+                                    <div className="flex items-center gap-2">
+                                        <div className="flex-1 h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                                            <motion.div
+                                                initial={{ width: 0 }}
+                                                animate={{ width: `${(stats.totalSpent / stats.totalBudget) * 100}%` }}
+                                                transition={{ duration: 1, delay: 0.5 }}
+                                                className={`h-full ${(stats.totalSpent / stats.totalBudget) * 100 > 80 ? 'bg-gradient-to-r from-red-500 to-rose-500' : 'bg-gradient-to-r from-purple-500 to-pink-500'}`}
+                                            ></motion.div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </motion.div>
+
+                            {/* Client Balance */}
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                transition={{ delay: 0.4 }}
+                                whileHover={{ scale: 1.05, y: -5 }}
+                                className={`${theme.card} rounded-2xl p-6 border ${theme.border} shadow-lg hover:shadow-2xl transition-all duration-300 relative overflow-hidden`}
+                            >
+                                <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-orange-400/20 to-orange-600/20 rounded-full blur-3xl"></div>
+                                <div className="relative z-10">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <div className="p-3 bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900/30 dark:to-orange-800/30 rounded-xl">
+                                            <Wallet className="text-orange-600 dark:text-orange-400" size={28} />
+                                        </div>
+                                        <TrendingUp className={stats.clientBalance >= 0 ? 'text-green-500' : 'text-red-500'} size={20} />
+                                    </div>
+                                    <h3 className={`text-3xl font-bold ${stats.clientBalance >= 0 ? 'text-green-600' : 'text-red-600'} mb-2`}>
+                                        SAR <CountUp end={Math.abs(stats.clientBalance)} duration={2} separator="," />
+                                    </h3>
+                                    <p className={`text-sm ${theme.subtext}`}>Client {stats.clientBalance >= 0 ? 'Receivable' : 'Payable'}</p>
+                                </div>
+                            </motion.div>
+
+                            {/* Total Invoiced */}
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                transition={{ delay: 0.5 }}
+                                whileHover={{ scale: 1.05, y: -5 }}
+                                className={`${theme.card} rounded-2xl p-6 border ${theme.border} shadow-lg hover:shadow-2xl transition-all duration-300 relative overflow-hidden`}
+                            >
+                                <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-indigo-400/20 to-indigo-600/20 rounded-full blur-3xl"></div>
+                                <div className="relative z-10">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <div className="p-3 bg-gradient-to-br from-indigo-50 to-indigo-100 dark:from-indigo-900/30 dark:to-indigo-800/30 rounded-xl">
+                                            <TrendingUp className="text-indigo-600 dark:text-indigo-400" size={28} />
+                                        </div>
+                                        <Receipt className="text-indigo-500" size={20} />
+                                    </div>
+                                    <h3 className={`text-3xl font-bold ${theme.text} mb-2`}>
+                                        {formatCurrency(stats.totalInvoiced)}
+                                    </h3>
+                                    <p className={`text-sm ${theme.subtext}`}>To client</p>
+                                </div>
+                            </motion.div>
+
+                            {/* Total Received */}
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                transition={{ delay: 0.6 }}
+                                whileHover={{ scale: 1.05, y: -5 }}
+                                className={`${theme.card} rounded-2xl p-6 border ${theme.border} shadow-lg hover:shadow-2xl transition-all duration-300 relative overflow-hidden`}
+                            >
+                                <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-teal-400/20 to-teal-600/20 rounded-full blur-3xl"></div>
+                                <div className="relative z-10">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <div className="p-3 bg-gradient-to-br from-teal-50 to-teal-100 dark:from-teal-900/30 dark:to-teal-800/30 rounded-xl">
+                                            <TrendingDown className="text-teal-600 dark:text-teal-400" size={28} />
+                                        </div>
+                                        <CheckCircle className="text-teal-500" size={20} />
+                                    </div>
+                                    <h3 className={`text-3xl font-bold ${theme.text} mb-2`}>
+                                        {formatCurrency(stats.totalReceived)}
+                                    </h3>
+                                    <p className={`text-sm ${theme.subtext}`}>From client</p>
+                                </div>
+                            </motion.div>
                         </div>
 
                         {/* Filters */}
-                        <div className="flex gap-4 mb-6">
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ delay: 0.7 }}
+                            className="flex gap-4 mb-6"
+                        >
                             <select
                                 value={selectedMonth}
                                 onChange={(e) => setSelectedMonth(e.target.value)}
-                                className="px-3 py-2 border rounded"
+                                className={`px-4 py-2 rounded-xl border ${theme.border} ${theme.card} font-medium focus:ring-2 focus:ring-blue-500 outline-none`}
                             >
                                 <option value="all">All Months</option>
                                 {[...Array(12)].map((_, i) => (
@@ -3075,49 +3597,79 @@ Project: ${PROJECT.name}
                                 type="number"
                                 value={selectedYear}
                                 onChange={(e) => setSelectedYear(e.target.value)}
-                                className="px-3 py-2 border rounded w-32"
+                                className={`px-4 py-2 rounded-xl border ${theme.border} ${theme.card} w-32 font-medium focus:ring-2 focus:ring-blue-500 outline-none`}
                             />
-                        </div>
+                        </motion.div>
 
                         {/* Charts Card */}
-                        <div className={`${theme.card} rounded-xl p-6 shadow-lg border ${theme.border}`}>
-                            <h2 className="text-2xl font-bold mb-6">Expense Overview</h2>
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.8 }}
+                            className={`${theme.card} rounded-2xl p-6 shadow-lg border ${theme.border}`}
+                        >
+                            <h2 className={`text-2xl font-bold ${theme.text} mb-6 flex items-center gap-2`}>
+                                <BarChart2 size={28} className="text-purple-600" />
+                                Expense Overview
+                            </h2>
 
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                <div className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl">
+                                    <h3 className={`text-lg font-semibold ${theme.text} mb-4`}>Budget Allocation</h3>
+                                    <ResponsiveContainer width="100%" height={300}>
+                                        <BarChart data={expenseChartData}>
+                                            <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#334155' : '#e2e8f0'} />
+                                            <XAxis dataKey="name" stroke={darkMode ? '#94a3b8' : '#64748b'} />
+                                            <YAxis stroke={darkMode ? '#94a3b8' : '#64748b'} />
+                                            <Tooltip
+                                                formatter={(value) => formatCurrency(value)}
+                                                contentStyle={{
+                                                    backgroundColor: darkMode ? '#1e293b' : '#ffffff',
+                                                    border: `1px solid ${darkMode ? '#334155' : '#e2e8f0'}`,
+                                                    borderRadius: '12px',
+                                                    padding: '12px'
+                                                }}
+                                            />
+                                            <Legend />
+                                            <Bar dataKey="allocated" fill="#3b82f6" name="Allocated" radius={[8, 8, 0, 0]} />
+                                            <Bar dataKey="spent" fill="#8b5cf6" name="Spent" radius={[8, 8, 0, 0]} />
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                </div>
 
-                                <ResponsiveContainer width="100%" height={300}>
-                                    <BarChart data={expenseChartData}>
-                                        <CartesianGrid strokeDasharray="3 3" />
-                                        <XAxis dataKey="name" />
-                                        <YAxis />
-                                        <Tooltip formatter={(value) => formatCurrency(value)} />
-                                        <Legend />
-                                        <Bar dataKey="allocated" fill="#3b82f6" name="Allocated" />
-                                        <Bar dataKey="spent" fill="#8b5cf6" name="Spent" />
-                                    </BarChart>
-                                </ResponsiveContainer>
-
-
-                                <ResponsiveContainer width="100%" height={300}>
-                                    <PieChart>
-                                        <Pie
-                                            data={expenseChartData}
-                                            dataKey="spent"
-                                            nameKey="name"
-                                            outerRadius={100}
-                                            fill="#3b82f6"
-                                            label
-                                        />
-                                        <Tooltip formatter={(value) => formatCurrency(value)} />
-                                    </PieChart>
-                                </ResponsiveContainer>
-
+                                <div className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl">
+                                    <h3 className={`text-lg font-semibold ${theme.text} mb-4`}>Spending Distribution</h3>
+                                    <ResponsiveContainer width="100%" height={300}>
+                                        <PieChart>
+                                            <Pie
+                                                data={expenseChartData}
+                                                dataKey="spent"
+                                                nameKey="name"
+                                                outerRadius={100}
+                                                fill="#3b82f6"
+                                                label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                                            >
+                                                {expenseChartData.map((entry, index) => {
+                                                    const colors = ['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#ef4444'];
+                                                    return <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />;
+                                                })}
+                                            </Pie>
+                                            <Tooltip
+                                                formatter={(value) => formatCurrency(value)}
+                                                contentStyle={{
+                                                    backgroundColor: darkMode ? '#1e293b' : '#ffffff',
+                                                    border: `1px solid ${darkMode ? '#334155' : '#e2e8f0'}`,
+                                                    borderRadius: '12px',
+                                                    padding: '12px'
+                                                }}
+                                            />
+                                        </PieChart>
+                                    </ResponsiveContainer>
+                                </div>
                             </div>
-                        </div>
-
-                    </div>
+                        </motion.div>
+                    </motion.div>
                 )}
-
                 {/* BUDGET */}
                 {view === "Budget" && (
                     <div className="space-y-6">
